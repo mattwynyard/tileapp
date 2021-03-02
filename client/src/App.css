@@ -1,0 +1,24 @@
+
+#root {
+  height: 100vh;
+}
+
+body {
+  margin: 0px;
+  width: 100vw;
+  height: 100vh;
+}
+
+.navbar {
+  margin-bottom: 0;
+  border: 0;
+  font-size: 22px !important;
+
+  
+  line-height: 2.0 !important;
+  letter-spacing: 5px;
+  border-radius: 0;
+}
+
+
+
