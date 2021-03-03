@@ -3,24 +3,29 @@ const { text } = require('body-parser');
 let net = require('net');
 const app = require('./app.js');
 let photo = null;
-let message = "";
 let connected = false;
 let javaStatus = {error: null, stdout: null, stderr: null};
+
+let mSocket = null;
 
 let messageObject = {
     connected: false,
     recording: false,
     battery: null,
     error: null,
+    time: null,
     filename: null,
     savetime: null,
     frequency: null,
 }
-let server = net.createServer((listener) => { //'connection' listener
-    //c.write('hello\r\n');
-  //client.pipe(client);
-  listener.on('data', (data) => {
-    var t0 = new Date().getTime();
+let server = net.createServer((socket) => { //'connection' listener
+    mSocket = socket;
+    socket.on('data', (data) => {
+        // if (message !== null) {
+        //     socket.write("Start", () => {
+        //         message = null;
+        //     });
+        // }
       let buffer = data.toString().split(',');
       buffer.pop(); //get rid of stupid comma on end of message lance wanted!!!
       buffer.forEach((element) => {
@@ -34,7 +39,7 @@ let server = net.createServer((listener) => { //'connection' listener
             case "RECORDING":
                 messageObject.recording = true;  
                 break;
-            case "NOTCONNECTED":
+            case "NOTRECORDING":
                 messageObject.recording = false;  
                 break;
             default:
@@ -46,20 +51,22 @@ let server = net.createServer((listener) => { //'connection' listener
                     messageObject.error = error[1];
                 } else if (element.includes("T:")) {
                     let message = element.split("|");
+                    console.log(message[0].substring(2, message[0].length));
                     messageObject.filename = message[1];
                     messageObject.savetime = message[2];
                     messageObject.frequency = message[3];
-                }
+                }              
                 break;
             }     
       });
-      var t1 = new Date().getTime();
-        console.log("Call to doSomething took " + (t1 - t0) + " milliseconds.")
+
+      socket.on('error', (error) => {
+        console.log('client error:' + error);
+      });
+      
+      
   });
-  listener.on('error', (error) => {
-    console.log('client error:' + error);
-  });
-  
+
   });
   server.listen(5001, () => { //'listening' listener
     console.log('server bound');
@@ -140,5 +147,9 @@ module.exports = {
     getMessage: () => {
         return messageObject;
     },
+
+    setMessage: (message) => {
+        mSocket.write(message)
+    }
 
 }

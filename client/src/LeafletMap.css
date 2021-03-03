@@ -4,7 +4,7 @@
     z-index: 1;
   }
 
-  .gnss-online {
+  .svg-status {
     position:absolute; 
     top:10px; 
     right:5px;
@@ -18,18 +18,24 @@
     position:absolute;
     top:5px; 
     right:5px;
-    width: 250px; 
+    width: 450px; 
     height: 40px;
     z-index: 1000;
-    font-family: "Century Gothic", sans-serif;
-    letter-spacing: 1px;
-    font-size: 12px !important;
+    
+  }
+
+  .gps-panel {
     font-family: "Century Gothic", sans-serif;
     letter-spacing: 1px;
     font-size: 12px !important;
     white-space: nowrap;
-    height: 40px;
-    
+  }
+
+  .camera-panel {
+    font-family: "Century Gothic", sans-serif;
+    letter-spacing: 1px;
+    font-size: 12px !important;
+    white-space: nowrap;
   }
 
   .image {
@@ -45,7 +51,6 @@
     position:absolute;
     bottom: 20px;
     right:20px;
-   
     z-index: 1000;
   }
 
@@ -58,34 +63,12 @@
     height: 20vw;
   }
 
-  .gps-menu{
-    position:absolute;
+  .gps-menu .camera-menu {
     width: 150px; 
     height: 40px;
   }
+
+
   
-
-  .gps-panel {
-    font-family: "Century Gothic", sans-serif;
-    letter-spacing: 1px;
-    font-size: 12px !important;
-    white-space: nowrap;
-  }
-
-  .mode-btn {
-    height: 40px;
-  }
-
-  .mode-col {
-
-    position:absolute;
-    right: 10px;
-    height: 40px;
-
-    /* top:0px; 
-    right:60px;
-    height: 42px; 
-    width: 40px;  */ 
-  }
 
   

@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 });
 
 app.post('/mouse', async (req, res) => {
-  console.log(req.body)
+  //console.log(req.body)
   let result = await db.closestFootpath(req.body.lat, req.body.lng);
   //console.log(result.rows)
   res.send({ message: result.rows });
@@ -46,11 +46,17 @@ app.get('/api', async (req, res) => {
   }
 });
 
+app.post('/record', async (req, res) => {
+  console.log(req.body);
+  java.setMessage("Start");
+  res.send({ message: "ok" });
+});
+
 app.get('/position', async (req, res) => {
   let merged = {...adapter.course, ...adapter.position};
   let photo = java.getPhoto();
   let message = java.getMessage();
-  //console.log(message);
+  console.log(message);
   res.send({ open: adapter.open, position: merged, message: message, photo: photo});
 });
 

@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Card }  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Collapse, Button, Row, Col} from 'antd';
+import { CaretRightOutlined} from '@ant-design/icons'
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 function MapEvents(props) {
@@ -74,6 +75,14 @@ function LeafletMap(props) {
         speed: "---"
     }
 
+    const cameraObj = {
+        battery: "---",
+        error: "---",
+        frequency: "---",
+        filename: "---",
+        savetime: "---",
+    }
+
     const EARTH_RADIUS = 6371000 //metres
     const [latlng, setPosition] = useState([]);
     const [footpaths, setFootpaths] = useState([]);
@@ -81,9 +90,13 @@ function LeafletMap(props) {
     const [project, setProject] = useState(null);
     const [photo, setPhoto] = useState(null);
     const [gpsData, setGpsData] = useState([gnssObj]);
+    const [cameraData, setCameraData] = useState([cameraObj]);
     const [host] = useState("localhost:5000");
     const [online, setOnline] = useState(false);
     const [camera, setCamera] = useState("Offline");
+    const [recording, setRecording] = useState(false);
+    const [battery, setBattery] = useState("--");
+    const [error, setError] = useState("ok");
     const positionRef = useRef();
        /**
      * Calculates distance on earth surface
@@ -93,16 +106,44 @@ function LeafletMap(props) {
     }
 
     const pollServer = () => {
-
         const interval = setInterval(() => {
             getPosition().then(data => { 
                 if (typeof(data) != "undefined") {
                     setPhoto(data.photo)
                     if (data.position !== {}) {
+                        console.log(data.message)  
                         let lat = data.position.latitude;
                         let lng = data.position.longitude;
                         setPosition([L.latLng(lat, lng)]);
-                        setGpsData([data.position]);       
+                        setGpsData([data.position]);
+                        let f = null;
+                        let s = null;
+                        let fq = null;
+
+                        if (data.message.filename == null) {
+                            f = "---"
+                        } else {
+                            let filename = data.message.filename.split("_");
+                            f = filename[filename.length - 1]
+                        }
+                        if (data.message.frequency == null) {
+                            fq = "---"
+                        } else {
+                            fq = data.message.frequency
+                        }
+                        if (data.message.savetime == null) {
+                            s = "---"
+                        } else {
+                            s = data.message.savetime
+                        }
+                        let cameraObj = {
+                            battery: data.message.battery,
+                            error: data.message.error,
+                            frequency: fq,
+                            filename: f,
+                            savetime: s,
+                        }
+                        setCameraData([cameraObj]);   
                     }    
                 }               
             })    
@@ -151,7 +192,7 @@ function LeafletMap(props) {
                 setOnline(true);
                 pollServer();
                 const body = await response.json();
-                console.log(body)
+                //console.log(body)
                 return body; 
             } else {
                 console.log(response);
@@ -168,14 +209,14 @@ function LeafletMap(props) {
     const getPosition = async () => {
     try {
         const response = await fetch("http://" + host + '/position')
-    
         if (response.status !== 200) {
             throw Error(response) 
         } else {
             try {
-                setOnline(true);
-                
                 const body = await response.json();
+                setBattery(body.message.battery);
+                setError(body.message.error);
+                setRecording(body.message.recording);
                 if (!body.open) {
                     setOnline(false);
                 } else {
@@ -185,7 +226,7 @@ function LeafletMap(props) {
             } catch {
                 console.log("position error")
             }      
-            }
+        }
             //return body; 
     } catch {
         setOnline(false);
@@ -194,7 +235,6 @@ function LeafletMap(props) {
     };
 
       const clickAuto = (e) => {
-        console.log('marker clicked')
         console.log(e.target.innerHTML);
         if (e.target.innerHTML === "AUTO") {
             setMode("MANUAL")
@@ -206,27 +246,36 @@ function LeafletMap(props) {
       const clickOnline = (e) => {
         callBackendAPI(); 
       };
-      
 
-    //component did mount
-    // useEffect(() => {
-    //     console.log("component mounted")
-    //     if(online) {
-    //     const interval = setInterval(() => {
-    //         getPosition().then(data => { 
-    //             if (typeof(data) != "undefined") {
-    //                 setPhoto(data.photo)
-    //                 if (data.position !== {}) {
-    //                     let lat = data.position.latitude;
-    //                     let lng = data.position.longitude;
-    //                     setPosition([L.latLng(lat, lng)]);
-    //                     setGpsData([data.position]);       
-    //                 }    
-    //             }               
-    //         })    
-    //     }, 1000);
-    //     return () => clearInterval(interval);
-    // }}, [getPosition]);
+      const clickRecord = async(e) => {
+        console.log(recording);
+        try {
+            let response = await fetch("http://" + host + '/record', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',        
+                },
+                body: JSON.stringify({
+                  record: null
+                })
+            });
+            if (response.ok) {
+                const body = await response.json();
+                console.log(body)
+                return body; 
+            } else {
+                console.log(response);
+                //setOnline(false);
+                return Error(response);
+            }
+        } catch {
+            //setOnline(false);
+            return new Error("record error")
+        } 
+  
+      };
 
   return (
       
@@ -243,23 +292,26 @@ function LeafletMap(props) {
         <MapEvents mouse={mousePosition}/>
         <div className="camera">
             <Card className="camera-card">
-                <Card.Body border="secondary">    
-                <Card.Title>Camera
-                <Button 
-                    className="camera=btn"
-                    variant="primary" 
-                    size="sm"
-                    onClick={clickOnline} 
-                    >{camera}</Button>
-                </Card.Title>
+                <Card.Body border="secondary">
+                
+                    <Button 
+                        className="connect=btn"
+                        variant="primary" 
+                        size="sm"
+                        onClick={clickOnline} 
+                        >{camera}
+                    </Button>           
+                 <div>
                     <Thumbnail photo={photo}/>
+                </div>   
+                {/* </Card.Title> */}
+                    
                     
                 </Card.Body>
             </Card>
         </div>  
         <Row className="tool-menu">
-            <Col className="mode-col" 
-            span={50}
+            <Col className="mode-col" span={4}
             >
                 <Button 
                     className="mode=btn"
@@ -268,10 +320,38 @@ function LeafletMap(props) {
                 >{mode}
                 </Button>
             </Col>
-            <Col className="gps-menu" span={150}>
+            <Col className="camera-menu" span={8}>
                 <Collapse >
                     <svg 
-                        className="gnss-online" 
+                        className="svg-status" 
+                        viewBox="1 1 10 10" x="16" 
+                        width="16" 
+                        stroke={recording ? "lime": "red"} 
+                        fill={recording ? "lime": "red"} 
+                        onClick={clickRecord}
+                        >
+                        <circle cx="5" cy="5" r="3" />
+                    </svg>       
+                    <Collapse.Panel 
+                        className="camera-panel" 
+                        header="CAMERA" 
+                        key="1">
+                    {cameraData.map((status, idx) =>
+                        <div className="gps-panel" key={`marker-${idx}`} >
+                            <b>Bat: {status.battery}%</b><br></br>
+                            <b>Error: {status.error}</b><br></br>
+                            <b>Frequency: {status.frequency}</b><br></br>
+                            <b>Photo: {status.filename}</b><br></br>
+                            <b>Save time: {status.savetime}ms</b>
+                        </div>
+                    )}
+                    </Collapse.Panel>
+                </Collapse>
+            </Col>
+            <Col className="gps-menu" span={9}>
+                <Collapse >
+                    <svg 
+                        className="svg-status" 
                         viewBox="1 1 10 10" x="16" 
                         width="16" 
                         stroke={online ? "lime": "red"} 
