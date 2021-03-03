@@ -4,7 +4,7 @@
     z-index: 1;
   }
 
-  .online {
+  .gnss-online {
     position:absolute; 
     top:10px; 
     right:5px;
@@ -36,9 +36,26 @@
     position:absolute;
     bottom:5px; 
     right:5px;
-    width: 200px; 
-    height: 200px;
+    width: 20vw; 
+    height: 14vw;
     z-index: 1000;
+  }
+
+  .camera {
+    position:absolute;
+    bottom: 20px;
+    right:20px;
+   
+    z-index: 1000;
+  }
+
+  .camera-card {
+    font-family: "Century Gothic", sans-serif;
+    letter-spacing: 1px;
+    font-size: 12px !important;
+    white-space: nowrap;
+    width: 25vw; 
+    height: 20vw;
   }
 
   .gps-menu{
@@ -53,8 +70,6 @@
     letter-spacing: 1px;
     font-size: 12px !important;
     white-space: nowrap;
-
-
   }
 
   .mode-btn {

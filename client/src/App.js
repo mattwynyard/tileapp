@@ -28,25 +28,15 @@ class App extends React.Component {
     this.setState({online: online});
   }
 
-   /**
-   * Gets the development or production host 
-   * @return {string} the host name
-   */
-
   render() {
-
     return (
       <React.Fragment>
-      
-        
-        <LeafletMap online={this.handleOnline}>
-        <svg className="online" viewBox="1 1 10 10" x="16" width="16" stroke={this.state.online ? "lime": "red"} 
+        <LeafletMap>
+        {/* <svg className="online" viewBox="1 1 10 10" x="16" width="16" stroke={this.state.online ? "lime": "red"} 
             fill={this.state.online ? "lime": "red"}>
             <circle cx="5" cy="5" r="3" />
-          </svg>
-         
+          </svg>         */}
         </LeafletMap>
- 
       </React.Fragment>
     );
   } 

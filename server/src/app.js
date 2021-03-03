@@ -1,5 +1,4 @@
 'use strict';
-
 const express = require('express');
 const morgan = require('morgan');
 const helmet = require('helmet');
@@ -8,56 +7,9 @@ const bodyParser = require('body-parser');
 const app = express();
 const GNSSAdapter = require('./serial.js');
 const db = require('./db.js');
+const java = require('./java.js');
 const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
-
-let net = require('net');
-let photo = null;
-let message = "";
-let recording = "";
-
-let server = net.createServer(function(client) { //'connection' listener
-  console.log('client connected');
-  client.on('end', () => {
-  console.log('client disconnected');
-  });
-
-client.on('data', (data) => {
-  let message = data.toString();
-  console.log(message)
-  let a = data.toString().split(',');
-  if (a[0] === "RECORDING" || "NOTRECORDING") {
-    recording = a[0];
-  }
-  console.log(a[0] + ",");
-});
-client.on('error', (error) => {
-  console.log('client error:' + error);
-});
-  //c.write('hello\r\n');
-  //client.pipe(client);
-});
-server.listen(5001, function() { //'listening' listener
-  console.log('server bound');
-});
-
-let photoServer = net.createServer((client) => { //'connection' listener
-  console.log('client connected');
-  client.on('end', () => {
-    console.log('client disconnected');
-  });
-  client.on('data', function(data) {
-    //console.log("photo: " + data.toString());
-    photo = data.toString();
-  });
-  client.on('error', function() {
-    console.log('client error');
-  });
-});
-photoServer.listen(5002, function() { //'listening' listener
-  console.log('photo server bound');
-});
-
 
 /************************************************************** */
 app.listen(port, () => {
@@ -87,11 +39,18 @@ app.post('/mouse', async (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
-  res.send({ message: "hello from server" });
+  let process = java.startJava("C12");
+  
+  if (process !== null) {
+    res.send({ message: "ok" });
+  }
 });
 
 app.get('/position', async (req, res) => {
   let merged = {...adapter.course, ...adapter.position};
+  let photo = java.getPhoto();
+  let message = java.getMessage();
+  //console.log(message);
   res.send({ open: adapter.open, position: merged, message: message, photo: photo});
 });
 

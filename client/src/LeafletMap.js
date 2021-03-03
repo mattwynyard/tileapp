@@ -2,7 +2,7 @@ import './LeafletMap.css';
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents, ScaleControl} from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {Image}  from 'react-bootstrap';
+import { Card }  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Collapse, Button, Row, Col} from 'antd';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -17,7 +17,6 @@ function MapEvents(props) {
   }
 
 function Thumbnail(props) {
-    const [photo, setPhoto] = useState(null);
     useEffect(() => {
 
     });
@@ -65,22 +64,49 @@ function Thumbnail(props) {
 
 function LeafletMap(props) {
 
+    const gnssObj = {
+        latitude: "---",
+        longitude: "---",
+        altitude: "---",
+        satellites: "---",
+        hdop: "---",
+        course: "---",
+        speed: "---"
+    }
+
     const EARTH_RADIUS = 6371000 //metres
     const [latlng, setPosition] = useState([]);
     const [footpaths, setFootpaths] = useState([]);
     const [mode, setMode] = useState("AUTO");
     const [project, setProject] = useState(null);
     const [photo, setPhoto] = useState(null);
-    const [gpsData, setGpsData] = useState([]);
+    const [gpsData, setGpsData] = useState([gnssObj]);
     const [host] = useState("localhost:5000");
     const [online, setOnline] = useState(false);
+    const [camera, setCamera] = useState("Offline");
     const positionRef = useRef();
-    const thumbnailRef = useRef();
        /**
      * Calculates distance on earth surface
      */
     const calcGCDistance = (distance) => {
         return distance * EARTH_RADIUS * (Math.PI /180);
+    }
+
+    const pollServer = () => {
+
+        const interval = setInterval(() => {
+            getPosition().then(data => { 
+                if (typeof(data) != "undefined") {
+                    setPhoto(data.photo)
+                    if (data.position !== {}) {
+                        let lat = data.position.latitude;
+                        let lng = data.position.longitude;
+                        setPosition([L.latLng(lat, lng)]);
+                        setGpsData([data.position]);       
+                    }    
+                }               
+            })    
+        }, 1000);
     }
 
     const mousePosition = async (latlng) => {
@@ -123,54 +149,35 @@ function LeafletMap(props) {
             let response = await fetch("http://" + host + '/api');
             if (response.ok) {
                 setOnline(true);
+                pollServer();
                 const body = await response.json();
                 console.log(body)
                 return body; 
             } else {
-                alert(response)
+                console.log(response);
                 setOnline(false);
-                //props.online(false);
                 return Error(response);
             }
         } catch {
             setOnline(false);
-            //props.online(false);
             return new Error("connection error")
-        }    
+        } 
+  
     };
-
-    // const getPhoto = async () => {
-    //     try {
-    //         let response = await fetch("http://" + host + '/photo');
-    //         if (response.ok) {
-    //             const body = await response.json();
-    //             return body.photo;
-    //         } else {
-    //             return Error(response);
-    //         }
-    //     } catch {
-    //         setOnline(false);
-    //         props.online(false);
-    //         return new Error("connection error")
-    //     }    
-    // };
       
-    
-      const getPosition = async () => {
-        try {
+    const getPosition = async () => {
+    try {
         const response = await fetch("http://" + host + '/position')
-        
+    
         if (response.status !== 200) {
-          //alert(body);   
-          throw Error(response) 
+            throw Error(response) 
         } else {
             try {
+                setOnline(true);
+                
                 const body = await response.json();
-                let lat = body.position.latitude;
-                let lng = body.position.longitude;
                 if (!body.open) {
                     setOnline(false);
-                    props.online(false);
                 } else {
                     return body;
                     
@@ -178,16 +185,13 @@ function LeafletMap(props) {
             } catch {
                 console.log("position error")
             }      
-          }
-          //return body; 
-        } catch {
-            setOnline(false);
-            console.log("server error");
-            //throw Error("server error") 
-            
-            
-        }  
-      };
+            }
+            //return body; 
+    } catch {
+        setOnline(false);
+        console.log("server error"); 
+    }  
+    };
 
       const clickAuto = (e) => {
         console.log('marker clicked')
@@ -202,27 +206,27 @@ function LeafletMap(props) {
       const clickOnline = (e) => {
         callBackendAPI(); 
       };
+      
 
     //component did mount
-    useEffect(() => {
-        const interval = setInterval(() => {
-            getPosition().then(data => { 
-                if (typeof(data) != "undefined") {
-                    console.log(data.position);
-                    setPhoto(data.photo)
-                    if (data.position !== {}) {
-                        let lat = data.position.latitude;
-                        let lng = data.position.longitude;
-                        setPosition([L.latLng(lat, lng)]);
-                        setGpsData([data.position]);       
-                    }
-                    
-                } 
-                
-            })    
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [getPosition]);
+    // useEffect(() => {
+    //     console.log("component mounted")
+    //     if(online) {
+    //     const interval = setInterval(() => {
+    //         getPosition().then(data => { 
+    //             if (typeof(data) != "undefined") {
+    //                 setPhoto(data.photo)
+    //                 if (data.position !== {}) {
+    //                     let lat = data.position.latitude;
+    //                     let lng = data.position.longitude;
+    //                     setPosition([L.latLng(lat, lng)]);
+    //                     setGpsData([data.position]);       
+    //                 }    
+    //             }               
+    //         })    
+    //     }, 1000);
+    //     return () => clearInterval(interval);
+    // }}, [getPosition]);
 
   return (
       
@@ -236,13 +240,23 @@ function LeafletMap(props) {
             scrollWheelZoom={true}
             keyboard={true}
         >
-        <Thumbnail ref ={thumbnailRef} photo={photo}>
-
-        </Thumbnail>
-
-            
-        <MapEvents 
-            mouse={mousePosition}/>
+        <MapEvents mouse={mousePosition}/>
+        <div className="camera">
+            <Card className="camera-card">
+                <Card.Body border="secondary">    
+                <Card.Title>Camera
+                <Button 
+                    className="camera=btn"
+                    variant="primary" 
+                    size="sm"
+                    onClick={clickOnline} 
+                    >{camera}</Button>
+                </Card.Title>
+                    <Thumbnail photo={photo}/>
+                    
+                </Card.Body>
+            </Card>
+        </div>  
         <Row className="tool-menu">
             <Col className="mode-col" 
             span={50}
@@ -257,16 +271,14 @@ function LeafletMap(props) {
             <Col className="gps-menu" span={150}>
                 <Collapse >
                     <svg 
-                        className="online" 
+                        className="gnss-online" 
                         viewBox="1 1 10 10" x="16" 
                         width="16" 
-                        stroke={online ? "green": "red"} 
-                        fill={online ? "green": "red"}
-                        onClick={clickOnline}
+                        stroke={online ? "lime": "red"} 
+                        fill={online ? "lime": "red"} 
                         >
                         <circle cx="5" cy="5" r="3" />
-                    </svg>
-                    
+                    </svg>       
                     <Collapse.Panel 
                         className="gps-panel" 
                         header="GNSS" 
@@ -318,7 +330,6 @@ function LeafletMap(props) {
             idx={idx}
           />
           )}
-         
       </MapContainer>
     </React.Fragment>
   );
