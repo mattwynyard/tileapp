@@ -8,6 +8,7 @@ const app = express();
 const GNSSAdapter = require('./serial.js');
 const db = require('./db.js');
 const java = require('./java.js');
+const { permittedCrossDomainPolicies } = require('helmet');
 const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 
@@ -32,23 +33,26 @@ app.use((req, res, next) => {
 });
 
 app.post('/mouse', async (req, res) => {
-  //console.log(req.body)
   let result = await db.closestFootpath(req.body.lat, req.body.lng);
-  //console.log(result.rows)
   res.send({ message: result.rows });
 });
 
 app.get('/api', async (req, res) => {
-  let process = java.startJava("C12");
-  
+  let process = java.startJava("C12", false);
   if (process !== null) {
     res.send({ message: "ok" });
   }
 });
 
+/**
+ * starts and stops camera recording
+ */
 app.post('/record', async (req, res) => {
-  console.log(req.body);
-  java.setMessage("Start");
+  if (!req.body.command) {
+    java.setMessage("Start");
+  } else {
+    java.setMessage("Stop");
+  }
   res.send({ message: "ok" });
 });
 
@@ -56,7 +60,7 @@ app.get('/position', async (req, res) => {
   let merged = {...adapter.course, ...adapter.position};
   let photo = java.getPhoto();
   let message = java.getMessage();
-  console.log(message);
+  //console.log(message);
   res.send({ open: adapter.open, position: merged, message: message, photo: photo});
 });
 

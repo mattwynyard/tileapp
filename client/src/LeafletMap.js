@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { Card }  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Collapse, Button, Row, Col} from 'antd';
-import { CaretRightOutlined} from '@ant-design/icons'
+import { CaretRightOutlined, ConsoleSqlOutlined} from '@ant-design/icons'
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 function MapEvents(props) {
@@ -92,11 +92,9 @@ function LeafletMap(props) {
     const [gpsData, setGpsData] = useState([gnssObj]);
     const [cameraData, setCameraData] = useState([cameraObj]);
     const [host] = useState("localhost:5000");
-    const [online, setOnline] = useState(false);
+    const [online, setOnline] = useState(true);
     const [camera, setCamera] = useState("Offline");
     const [recording, setRecording] = useState(false);
-    const [battery, setBattery] = useState("--");
-    const [error, setError] = useState("ok");
     const positionRef = useRef();
        /**
      * Calculates distance on earth surface
@@ -104,14 +102,16 @@ function LeafletMap(props) {
     const calcGCDistance = (distance) => {
         return distance * EARTH_RADIUS * (Math.PI /180);
     }
+    let interval = null;
 
-    const pollServer = () => {
-        const interval = setInterval(() => {
-            getPosition().then(data => { 
+    const pollServer = (rate) => {    
+        interval = setInterval(() => {
+            //console.log(online);
+            if(online) {
+            getPosition().then(data => {
                 if (typeof(data) != "undefined") {
                     setPhoto(data.photo)
                     if (data.position !== {}) {
-                        console.log(data.message)  
                         let lat = data.position.latitude;
                         let lng = data.position.longitude;
                         setPosition([L.latLng(lat, lng)]);
@@ -146,8 +146,9 @@ function LeafletMap(props) {
                         setCameraData([cameraObj]);   
                     }    
                 }               
-            })    
-        }, 1000);
+            })
+        }          
+        }, rate);     
     }
 
     const mousePosition = async (latlng) => {
@@ -190,9 +191,9 @@ function LeafletMap(props) {
             let response = await fetch("http://" + host + '/api');
             if (response.ok) {
                 setOnline(true);
-                pollServer();
+                pollServer(1000);
                 const body = await response.json();
-                //console.log(body)
+                console.log(body)
                 return body; 
             } else {
                 console.log(response);
@@ -207,31 +208,29 @@ function LeafletMap(props) {
     };
       
     const getPosition = async () => {
-    try {
-        const response = await fetch("http://" + host + '/position')
-        if (response.status !== 200) {
-            throw Error(response) 
-        } else {
             try {
-                const body = await response.json();
-                setBattery(body.message.battery);
-                setError(body.message.error);
-                setRecording(body.message.recording);
-                if (!body.open) {
-                    setOnline(false);
+                const response = await fetch("http://" + host + '/position')
+                if (response.status !== 200) {
+                    throw Error(response) 
                 } else {
-                    return body;
-                    
-                }          
+                    try {
+                        const body = await response.json();
+                        setRecording(body.message.recording);
+                        if (!body.open) {
+                            setOnline(false);
+                        } else {
+                            return body;     
+                        }          
+                    } catch {
+                        console.log("position error")
+                    }      
+                }
+                    //return body; 
             } catch {
-                console.log("position error")
-            }      
-        }
-            //return body; 
-    } catch {
-        setOnline(false);
-        console.log("server error"); 
-    }  
+                setOnline(false);
+                clearInterval(interval)
+                console.log("server error"); 
+            }  
     };
 
       const clickAuto = (e) => {
@@ -258,7 +257,7 @@ function LeafletMap(props) {
                   'Content-Type': 'application/json',        
                 },
                 body: JSON.stringify({
-                  record: null
+                  command: recording
                 })
             });
             if (response.ok) {
@@ -274,7 +273,6 @@ function LeafletMap(props) {
             //setOnline(false);
             return new Error("record error")
         } 
-  
       };
 
   return (
@@ -293,7 +291,6 @@ function LeafletMap(props) {
         <div className="camera">
             <Card className="camera-card">
                 <Card.Body border="secondary">
-                
                     <Button 
                         className="connect=btn"
                         variant="primary" 
@@ -311,8 +308,7 @@ function LeafletMap(props) {
             </Card>
         </div>  
         <Row className="tool-menu">
-            <Col className="mode-col" span={4}
-            >
+            <Col className="mode-col" span={4}>
                 <Button 
                     className="mode=btn"
                     type="default"

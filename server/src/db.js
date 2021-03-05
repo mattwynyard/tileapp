@@ -56,6 +56,10 @@ module.exports = {
         });
     },
 
+    addPhoto : (time, photo) => {
+
+    },
+
     closestFootpath: (lat, lng) => {
         return new Promise((resolve, reject) => {
             let sql = "SELECT r.id, r.roadid, r.side, r.label, ST_AsGeoJSON(geom) as geojson, ST_Distance(geom, ST_SetSRID(ST_MakePoint(" + lng + "," + lat + "),4326)) AS dist FROM centrelinefp as r ORDER BY geom <-> ST_SetSRID(ST_MakePoint(" + lng + "," + lat + "),4326) LIMIT 100";

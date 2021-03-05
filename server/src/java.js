@@ -18,14 +18,36 @@ let messageObject = {
     savetime: null,
     frequency: null,
 }
+
+let formatDate = (d => {
+    let raw = d.split(' ');
+    let datePart = raw[0].split('/');
+    let timePart = raw[1].split(':');
+    let date = new Date();
+    date.setDate(datePart[0]);
+    date.setMonth(datePart[1] - 1);
+    date.setYear(datePart[2]);
+    date.setHours(timePart[0]);
+    date.setMinutes(timePart[1]);
+    date.setSeconds(timePart[2]);
+    return date;
+});
+
+let addTime = (date, seconds) => {
+    let time = date.getTime();
+    time = time += (1000 * seconds);
+    let dateCorrected = new Date(time);
+    return dateCorrected;
+}
+
+
+
 let server = net.createServer((socket) => { //'connection' listener
     mSocket = socket;
+    let timeFlag = null;
+    let counter = 0; //seconds
+    let ready = 0;
     socket.on('data', (data) => {
-        // if (message !== null) {
-        //     socket.write("Start", () => {
-        //         message = null;
-        //     });
-        // }
       let buffer = data.toString().split(',');
       buffer.pop(); //get rid of stupid comma on end of message lance wanted!!!
       buffer.forEach((element) => {
@@ -51,11 +73,42 @@ let server = net.createServer((socket) => { //'connection' listener
                     messageObject.error = error[1];
                 } else if (element.includes("T:")) {
                     let message = element.split("|");
-                    console.log(message[0].substring(2, message[0].length));
                     messageObject.filename = message[1];
                     messageObject.savetime = message[2];
                     messageObject.frequency = message[3];
-                }              
+                    let date = formatDate(message[0].substring(2, message[0].length - 4));
+
+                    if (timeFlag === null) {
+                        timeFlag = date.toString();
+                        //console.log(date.toString());
+                        ready = 1;
+                        break;
+                    } else {
+                        if (ready === 1) {
+                            if (timeFlag !== date.toString()) { 
+                                ready = 2;
+                                timeFlag = date.toString();
+                                console.log(date.toString());
+                                break;
+                            } else {
+                                break;
+                            }
+                        }               
+                        if (ready === 2) {
+                            let dbTime = null;
+                            if (timeFlag === date.toString()) {
+                                counter += 1;
+                                dbTime = addTime(date, counter);
+
+                            } else {
+                                dbTime = timeFlag = date.toString();
+                                counter = 0;
+                            }
+                            console.log(dbTime.toString());
+    
+                        }
+                    }    
+                }
                 break;
             }     
       });
@@ -115,31 +168,26 @@ photoServer.on('error', () => {
 module.exports = {
     /**
      * 
-     * @param {string} camera 
-     * @param {callback} status 
+     * @param {string} camera - the camera id
+     * @param {boolean} debug - print java output to standard stream 
      */
-    startJava : async(camera) => {
-      console.log("starting java");
-      
-      let exec = require('child_process').exec, child;
-      child = exec('java -jar ./onsite-camera-app.jar ' + camera,
-        (error, stdout, stderr) => {
-            javaStatus.error = error;
-            javaStatus.stdout = stdout;
-            javaStatus.stderr = stderr;
-            console.log('stdout: ' + stdout);
-            console.log('stderr: ' + stderr);
-            if(error !== null) {
-                console.log('exec error: ' + error);
-               
-            }     
+    startJava : async (camera, debug) => {
+        console.log("starting java");
+        const { spawn } = require('child_process');
+        const java = spawn('java -jar ./onsite-camera-app.jar ' + camera, {shell: true});
+        java.stdout.on('data', (data) => {
+            if (debug) {
+                console.log("java: " + data.toString());
+            }
         });
-        child.on('exit', (code) => {
-            console.log(`child process exited with code ${code}`);
-          }); 
-        return child; 
-    },
 
+        java.stderr.on('data', (err) => {
+            console.log("java: " + err.toString());
+        });
+
+        //await onExit(java); 
+    },
+    
     getPhoto: ()=> {
         return photo;
     },
