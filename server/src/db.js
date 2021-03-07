@@ -56,8 +56,19 @@ module.exports = {
         });
     },
 
-    addPhoto : (time, photo) => {
-
+    insertPhoto : (record) => {
+        return new Promise((resolve, reject) => {
+            let sql = "INSERT INTO photo(gnsstime, corrected, photo, savetime, frequency) VALUES ( '" +record.gnsstime + "'," +
+            "'" + record.corrected + "', '" + record.photo + "', " + record.savetime +  ", " + record.frequency + ")";
+            connection.query(sql, (err, result) => {
+                if (err) {
+                    console.error('Error executing query', err.stack)
+                    console.log(record);
+                    return reject(err);
+                }
+                return resolve(result);
+            });
+        });
     },
 
     closestFootpath: (lat, lng) => {

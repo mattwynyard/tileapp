@@ -12,6 +12,8 @@ const { permittedCrossDomainPolicies } = require('helmet');
 const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 
+let javaPID = null;
+
 /************************************************************** */
 app.listen(port, () => {
   console.log(`Listening: http://${host}:${port}`);
@@ -38,10 +40,19 @@ app.post('/mouse', async (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
-  let process = java.startJava("C12", false);
-  if (process !== null) {
-    res.send({ message: "ok" });
-  }
+  if (javaPID !== null) {
+    let process = java.startJava("C12", false);
+    process.then((java) => {
+    console.log(java.pid);
+    javaPID = java.pid;
+    if (java.pid >= 0) { 
+    } else {
+      res.send({ java: 'error', gnss: adapter.open });
+    }
+    });
+  } else {
+    res.send({ java: 'running', gnss: adapter.open });
+  } 
 });
 
 /**

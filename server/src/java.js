@@ -2,6 +2,7 @@
 const { text } = require('body-parser');
 let net = require('net');
 const app = require('./app.js');
+const db = require('./db.js');
 let photo = null;
 let connected = false;
 let javaStatus = {error: null, stdout: null, stderr: null};
@@ -40,13 +41,30 @@ let addTime = (date, seconds) => {
     return dateCorrected;
 }
 
+/**
+     * formats js date object to NZDT string for postgres
+     * @param {Date object} date
+     */
+let getNZST = (date) => {
+        let year = date.getFullYear();
+        let month = date.getMonth();
+        let day = date.getDate();
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+        let seconds = date.getSeconds();
+        return year + "-" + month.toString().padStart(2, '0') + "-" + day.toString().padStart(2, '0') + " "
+        + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":"
+        + seconds.toString().padStart(2, '0') + " " + 'NZST';
+    }
+
 
 
 let server = net.createServer((socket) => { //'connection' listener
     mSocket = socket;
     let timeFlag = null;
     let counter = 0; //seconds
-    let ready = 0;
+    let ready = 0; //0 intialise 1 - ignore 2-read
+    let record = {};
     socket.on('data', (data) => {
       let buffer = data.toString().split(',');
       buffer.pop(); //get rid of stupid comma on end of message lance wanted!!!
@@ -74,41 +92,45 @@ let server = net.createServer((socket) => { //'connection' listener
                 } else if (element.includes("T:")) {
                     let message = element.split("|");
                     messageObject.filename = message[1];
+                    record.photo = message[1];
                     messageObject.savetime = message[2];
+                    record.savetime = message[2];
                     messageObject.frequency = message[3];
+                    record.frequency = message[3];
                     let date = formatDate(message[0].substring(2, message[0].length - 4));
-
-                    if (timeFlag === null) {
+                    record.gnsstime = getNZST(date);
+                    console.log(record.gnsstime);
+                    // let d = new Date();
+                    // let timestamp = getNZST(d);
+                    // record.timestamp = timestamp;
+                    if (ready === 0) {
                         timeFlag = date.toString();
-                        //console.log(date.toString());
                         ready = 1;
-                        break;
                     } else {
                         if (ready === 1) {
                             if (timeFlag !== date.toString()) { 
                                 ready = 2;
-                                timeFlag = date.toString();
-                                console.log(date.toString());
+                                timeFlag = date.toString();                          
                                 break;
                             } else {
-                                break;
+                                //ignore
                             }
-                        }               
-                        if (ready === 2) {
-                            let dbTime = null;
+                        } else if (ready === 2)              
+                         {
                             if (timeFlag === date.toString()) {
                                 counter += 1;
-                                dbTime = addTime(date, counter);
-
+                                record.corrected = getNZST(addTime(date, counter));
                             } else {
-                                dbTime = timeFlag = date.toString();
-                                counter = 0;
+                                record.corrected = timeFlag = getNZST(date);
+                                counter = 0;            
                             }
-                            console.log(dbTime.toString());
-    
+                            db.insertPhoto(record)
+                        } else {
+                            //shouldnt get here
                         }
                     }    
-                }
+                } 
+
                 break;
             }     
       });
@@ -185,7 +207,11 @@ module.exports = {
             console.log("java: " + err.toString());
         });
 
-        //await onExit(java); 
+        // java.then((process) => {
+        //     process.pid;
+        // });
+
+        return java; 
     },
     
     getPhoto: ()=> {

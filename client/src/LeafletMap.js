@@ -4,9 +4,11 @@ import L, { LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Card }  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Collapse, Button, Row, Col} from 'antd';
-import { CaretRightOutlined, ConsoleSqlOutlined} from '@ant-design/icons'
+import { Collapse, Button, Row, Col, Menu, Dropdown} from 'antd';
+import { CaretRightOutlined, ConsoleSqlOutlined, DownOutlined} from '@ant-design/icons';
+import 'antd/dist/antd.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import CollapsePanel from 'antd/lib/collapse/CollapsePanel';
 
 function MapEvents(props) {
     const map = useMapEvents({
@@ -92,9 +94,12 @@ function LeafletMap(props) {
     const [gpsData, setGpsData] = useState([gnssObj]);
     const [cameraData, setCameraData] = useState([cameraObj]);
     const [host] = useState("localhost:5000");
-    const [online, setOnline] = useState(true);
+    const [gnssOnline, setgnssOnline] = useState(false);
     const [camera, setCamera] = useState("Offline");
     const [recording, setRecording] = useState(false);
+    const [cameraName, setCameraName] = useState("---");
+    const [baud, setBaud] = useState("---");
+    const [comPort, setComPort] = useState("---");
     const positionRef = useRef();
        /**
      * Calculates distance on earth surface
@@ -102,11 +107,19 @@ function LeafletMap(props) {
     const calcGCDistance = (distance) => {
         return distance * EARTH_RADIUS * (Math.PI /180);
     }
+    let online = false;
     let interval = null;
+    const setOnline = (isOnline) => {
+        setgnssOnline(isOnline);
+        online = isOnline;
+    }
+
+    const getOnline = () => {
+        return online;
+    }
 
     const pollServer = (rate) => {    
         interval = setInterval(() => {
-            //console.log(online);
             if(online) {
             getPosition().then(data => {
                 if (typeof(data) != "undefined") {
@@ -181,7 +194,6 @@ function LeafletMap(props) {
             }
         } catch {
             setOnline(false);
-            //props.online(false);
             return new Error("connection error")
         }    
     };
@@ -190,10 +202,11 @@ function LeafletMap(props) {
         try {
             let response = await fetch("http://" + host + '/api');
             if (response.ok) {
-                setOnline(true);
-                pollServer(1000);
                 const body = await response.json();
-                console.log(body)
+                if (body.gnss) {
+                    setOnline(true);
+                    pollServer(1000);
+                }
                 return body; 
             } else {
                 console.log(response);
@@ -210,7 +223,7 @@ function LeafletMap(props) {
     const getPosition = async () => {
             try {
                 const response = await fetch("http://" + host + '/position')
-                if (response.status !== 200) {
+                if (!response.ok) {
                     throw Error(response) 
                 } else {
                     try {
@@ -228,7 +241,7 @@ function LeafletMap(props) {
                     //return body; 
             } catch {
                 setOnline(false);
-                clearInterval(interval)
+                //clearInterval(interval)
                 console.log("server error"); 
             }  
     };
@@ -242,12 +255,24 @@ function LeafletMap(props) {
         }
       };
 
-      const clickOnline = (e) => {
+    const clickOnline = (e) => {
+        e.preventDefault();
         callBackendAPI(); 
-      };
+    };
+
+    const clickCamera = (e) => {
+        setCameraName(e.key);
+    }
+
+    const clickBaud = (e) => {
+        setBaud(e.key);
+    }
+
+    const clickCom = (e) => {
+        setComPort(e.key);
+    }
 
       const clickRecord = async(e) => {
-        console.log(recording);
         try {
             let response = await fetch("http://" + host + '/record', {
                 method: 'POST',
@@ -274,6 +299,63 @@ function LeafletMap(props) {
             return new Error("record error")
         } 
       };
+
+    const baudMenu = (
+        <Menu onClick={e => clickBaud(e)}>
+            <Menu.Item key="115200">
+            115200
+            </Menu.Item>
+            <Menu.Item key="57600">
+            57600
+            </Menu.Item >
+            <Menu.Item key="38400">
+            38400
+            </Menu.Item>
+            <Menu.Item key="19200">
+            19200
+            </Menu.Item>
+            <Menu.Item key="9600">
+            9600
+            </Menu.Item>
+        </Menu>
+    );
+
+    const comMenu = (
+        <Menu onClick={e => clickCom(e)}>
+            <Menu.Item key="COM1">
+            COM1
+            </Menu.Item>
+            <Menu.Item key="COM2">
+            COM2
+            </Menu.Item >
+            <Menu.Item key="COM3">
+            COM3
+            </Menu.Item>
+            <Menu.Item key="COM4">
+            COM4
+            </Menu.Item>
+            <Menu.Item key="COM5">
+            COM5
+            </Menu.Item>
+            <Menu.Item key="COM6">
+            COM6
+            </Menu.Item>
+        </Menu>
+    );
+
+    const menu = (
+        <Menu onClick={e => clickCamera(e)}>
+            <Menu.Item key="C12">
+            C12
+            </Menu.Item>
+            <Menu.Item key="C11">
+             C11
+            </Menu.Item >
+            <Menu.Item key="C10">
+            C10
+            </Menu.Item>
+        </Menu>
+    );
 
   return (
       
@@ -327,22 +409,35 @@ function LeafletMap(props) {
                         onClick={clickRecord}
                         >
                         <circle cx="5" cy="5" r="3" />
-                    </svg>       
+                    </svg>  
                     <Collapse.Panel 
                         className="camera-panel" 
                         header="CAMERA" 
                         key="1">
                     {cameraData.map((status, idx) =>
-                        <div className="gps-panel" key={`marker-${idx}`} >
+                    <div key={`marker-${idx}`} >
+                    <div>
+                        <b>
+                            {"Camera: "}
+                        </b>
+                        <Dropdown overlay={menu} trigger="click"  className="camera-dropdown">
+                            <span className="camera-panel"  onClick={e => e.preventDefault()}>
+                            {cameraName}<DownOutlined />
+                            </span>
+                        </Dropdown >
+                    </div>
+                        <div className="gps-panel" >
                             <b>Bat: {status.battery}%</b><br></br>
                             <b>Error: {status.error}</b><br></br>
                             <b>Frequency: {status.frequency}</b><br></br>
                             <b>Photo: {status.filename}</b><br></br>
                             <b>Save time: {status.savetime}ms</b>
                         </div>
+                    </div>  
                     )}
                     </Collapse.Panel>
-                </Collapse>
+                    </Collapse>
+                    
             </Col>
             <Col className="gps-menu" span={9}>
                 <Collapse >
@@ -350,8 +445,8 @@ function LeafletMap(props) {
                         className="svg-status" 
                         viewBox="1 1 10 10" x="16" 
                         width="16" 
-                        stroke={online ? "lime": "red"} 
-                        fill={online ? "lime": "red"} 
+                        stroke={gnssOnline ? "limegreen": "red"} 
+                        fill={gnssOnline ? "limegreen": "red"} 
                         >
                         <circle cx="5" cy="5" r="3" />
                     </svg>       
@@ -360,7 +455,8 @@ function LeafletMap(props) {
                         header="GNSS" 
                         key="1">
                     {gpsData.map((position, idx) =>
-                        <div className="gps-panel" key={`marker-${idx}`} >
+                    <div key={`marker-${idx}`} >
+                        <div className="gps-panel" >
                             <b>Lat: {position.latitude}</b><br></br>
                             <b>Lng: {position.longitude}</b><br></br>
                             <b>Alt: {position.altitude}m</b><br></br>
@@ -368,6 +464,22 @@ function LeafletMap(props) {
                             <b>HDop: {position.hdop}m</b><br></br>
                             <b>Course: {position.course}</b><br></br>
                             <b>Speed: {position.speed}km/hr</b>
+                        </div>
+                        <div>
+                        <b>{"Baud: "}</b>
+                        <Dropdown overlay={baudMenu} trigger="click"  className="camera-dropdown">
+                            <span className="camera-panel"  onClick={e => e.preventDefault()}>
+                            {baud}<DownOutlined />
+                            </span>
+                            
+                        </Dropdown ><br></br>
+                        </div>  
+                        <b>{"COM Port: "}</b>
+                        <Dropdown overlay={comMenu} trigger="click"  className="camera-dropdown">
+                            <span className="camera-panel"  onClick={e => e.preventDefault()}>
+                            {comPort}<DownOutlined />
+                            </span>
+                        </Dropdown >
                         </div>
                     )}
                     </Collapse.Panel>

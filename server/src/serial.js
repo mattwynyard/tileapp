@@ -42,7 +42,7 @@ class GNSSAdapter {
       let minutes = time.substring(2, 4);
       let seconds = time.substring(4, 6);
       let milliSeconds = time.substring(7, 9);
-      var date = new Date();
+      let date = new Date();
       date.setUTCHours(hours);
       date.setUTCMinutes(minutes);
       date.setUTCSeconds(seconds);
@@ -65,6 +65,10 @@ class GNSSAdapter {
         return year + "-" + month.toString().padStart(2, '0') + "-" + day.toString().padStart(2, '0') + " "
         + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":"
         + seconds.toString().padStart(2, '0') + " " + 'NZST';
+    }
+
+    getStatus() {
+      return this.open
     }
 
     checkSum(s) {
