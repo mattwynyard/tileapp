@@ -8,18 +8,46 @@ const app = express();
 const GNSSAdapter = require('./serial.js');
 const db = require('./db.js');
 const java = require('./java.js');
-const { permittedCrossDomainPolicies } = require('helmet');
+const { } = require('helmet');
 const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
+const usbDetect = require('usb-detection');
 
 let javaPID = null;
-
+let comPort = null;
+let adapter = null;
 /************************************************************** */
+let comConnect = () => {
+usbDetect.find(5446, (err, device) =>{ 
+    if (device.length > 0) {
+      let deviceName = device[0].deviceName;
+      let i = deviceName.indexOf("(");
+      let j = deviceName.indexOf(")");
+      comPort = deviceName.substring(i + 1, j);
+      adapter = new GNSSAdapter(comPort, 115200);
+    } else {
+      console.log("error: no device")
+    }  
+  });
+}
+
+usbDetect.on('remove', (device) => { 
+  console.log('remove', device); 
+  adapter = null;
+});
+
+usbDetect.on('add', (device) => { 
+  console.log('add', device); 
+  comConnect(device);
+});
+
+usbDetect.startMonitoring();
+comConnect();
+
 app.listen(port, () => {
   console.log(`Listening: http://${host}:${port}`);
 });
- const adapter = new GNSSAdapter("COM5", 115200);
-
+ 
 app.use(cors());
 app.use(morgan('dev'));
 app.use(helmet());
@@ -40,15 +68,17 @@ app.post('/mouse', async (req, res) => {
 });
 
 app.get('/api', async (req, res) => {
-  if (javaPID !== null) {
+  if (javaPID === null) {
     let process = java.startJava("C12", false);
     process.then((java) => {
     console.log(java.pid);
     javaPID = java.pid;
     if (java.pid >= 0) { 
+      res.send({ java: 'starting', gnss: adapter.open });
     } else {
       res.send({ java: 'error', gnss: adapter.open });
     }
+    
     });
   } else {
     res.send({ java: 'running', gnss: adapter.open });

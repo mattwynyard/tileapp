@@ -404,8 +404,8 @@ function LeafletMap(props) {
                         className="svg-status" 
                         viewBox="1 1 10 10" x="16" 
                         width="16" 
-                        stroke={recording ? "lime": "red"} 
-                        fill={recording ? "lime": "red"} 
+                        stroke={recording ? "limegreen": "red"} 
+                        fill={recording ? "limegreen": "red"} 
                         onClick={clickRecord}
                         >
                         <circle cx="5" cy="5" r="3" />
