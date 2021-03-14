@@ -206,11 +206,6 @@ module.exports = {
         java.stderr.on('data', (err) => {
             console.log("java: " + err.toString());
         });
-
-        // java.then((process) => {
-        //     process.pid;
-        // });
-
         return java; 
     },
     

@@ -12,7 +12,9 @@ class GNSSAdapter {
         this.position = null
         this.course = null
         this.open = false;
+        this.javaPID = null;
         this.run(this);
+        
     }
 
     getLatitude(data, direction) {
@@ -60,11 +62,14 @@ class GNSSAdapter {
         let hours = date.getHours();
         let minutes = date.getMinutes();
         let seconds = date.getSeconds();
-        let zone = date.getTimezoneOffset();
-
         return year + "-" + month.toString().padStart(2, '0') + "-" + day.toString().padStart(2, '0') + " "
         + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":"
         + seconds.toString().padStart(2, '0') + " " + 'NZST';
+    }
+
+    setJava(PID) {
+      this.javaPID = PID;
+      
     }
 
     getStatus() {
@@ -93,82 +98,99 @@ class GNSSAdapter {
         });
 
         this.serialPort.on('data', async (data) => {
-          let pRecord = new Position();
-          let cRecord = null;
-          const buf = Buffer.from(data, 'ascii');
-          const bufferStr = buf.toString();
-          const sentences = bufferStr.split('\r\n');
-          let errorBuffer = null;
-          let error = false;
-          sentences.forEach((sentence) => {
-            let data = sentence.split(',');
-            if (sentence.length !== 0) {
-              let indexAsterix = sentence.indexOf('*');
-              if (indexAsterix !== -1) {
-                if(error) {
-                  console.log("error buffer" + errorBuffer);
-                  console.log("new sentence" + errorBuffer);
-                  error = false
-                }
-                let checksumNMEA = sentence.substring(indexAsterix + 1, sentence.length);
-                let checksum = this.checkSum(sentence.substring(1, indexAsterix));
-                if (checksum === checksumNMEA) {
-                  switch(data[0]) {
-                    case "$GNTXT":
-                      console.log(data);
-                      break;
-                    case "$GNGGA":
-                      pRecord.timestamp = delegate.getNZDT(delegate.getUTCTime(data[1]));
-                      pRecord.latitude = Number(delegate.getLatitude(data[2], data[3])).toFixed(6);
-                      pRecord.longitude = Number(delegate.getLongitude(data[4], data[5])).toFixed(6);
-                      pRecord.quality = data[6];
-                      pRecord.satellites = data[7];
-                      pRecord.hdop = data[8];
-                      pRecord.altitude = data[11]; //geoidal seperation
-                      break;
-                    case "$GNGLL":
-                      pRecord.status = data[6];
-                    break;
-                    case "$GNRMC":
-                      cRecord = new Course();
-                      cRecord.timestamp = delegate.getNZDT(delegate.getUTCTime(data[1]));
-                      cRecord.status = data[2];
-                      if (data[8].length !== 0) {
-                        cRecord.course = Number(data[8]).toFixed(2); //true
-                      } 
-                      cRecord.speed = Number(data[7]  * 1.852).toFixed(2); //knots->metres
-                      break;
-                    case "$GNVTG":
-                      //console.log(data)
-                      break;
-                    default:
-                      break;
+          console.log(delegate.javaPID)
+          if ((delegate.javaPID !== null) && (typeof delegate.javaPID !== 'undefined')) {
+            let pRecord = new Position();
+            let cRecord = null;
+            const buf = Buffer.from(data, 'ascii');
+            const bufferStr = buf.toString();
+            console.log(bufferStr)
+            const sentences = bufferStr.split('\r\n');
+            let errorBuffer = null;
+            let error = false;
+           
+            sentences.forEach((sentence) => {
+              let data = sentence.split(',');
+              if (sentence.length !== 0) {
+                let indexAsterix = sentence.indexOf('*');
+                if (indexAsterix !== -1) {
+                  if(error) {
+                    console.log("error buffer" + errorBuffer);
+                    console.log("new sentence" + errorBuffer);
+                    error = false
                   }
+                  let checksumNMEA = sentence.substring(indexAsterix + 1, sentence.length);
+                  let checksum = this.checkSum(sentence.substring(1, indexAsterix));
+                  if (checksum === checksumNMEA) {
+                    switch(data[0]) {
+                      case "$GNTXT":
+                        console.log(data);
+                        break;
+                      case "$GNGGA":
+                        pRecord.timestamp = delegate.getNZDT(delegate.getUTCTime(data[1]));
+                        pRecord.latitude = Number(delegate.getLatitude(data[2], data[3])).toFixed(6);
+                        pRecord.longitude = Number(delegate.getLongitude(data[4], data[5])).toFixed(6);
+                        pRecord.quality = data[6];
+                        pRecord.satellites = data[7];
+                        pRecord.hdop = data[8];
+                        pRecord.altitude = data[11]; //geoidal seperation
+                        break;
+                      case "$GNGLL":
+                        pRecord.status = data[6];
+                      break;
+                      case "$GNRMC":
+                        cRecord = new Course();
+                        cRecord.timestamp = delegate.getNZDT(delegate.getUTCTime(data[1]));
+                        cRecord.status = data[2];
+                        if (data[8].length !== 0) {
+                          cRecord.course = Number(data[8]).toFixed(2); //true
+                        } 
+                        cRecord.speed = Number(data[7]  * 1.852).toFixed(2); //knots->metres
+                        break;
+                      case "$GNVTG":
+                        //console.log(data)
+                        break;
+                      default:
+                        break;
+                    }
+                  } else {
+                    console.log("Error checksum: " + sentence);
+                    console.log("Buffer: " + bufferStr);
+                    console.log("index: " + indexAsterix)
+                  } 
                 } else {
-                  console.log("Error checksum: " + sentence);
-                  console.log("Buffer: " + bufferStr);
-                  console.log("index: " + indexAsterix)
-                } 
-              } else {
-                error = true;
-                errorBuffer = sentence;
+                  error = true;
+                  errorBuffer = sentence;
+                }      
               }      
-            }      
-          });
-          if (cRecord != null) {
-            if (cRecord.isValid()) {
-              delegate.course = cRecord;
-              await db.addCourse(cRecord);
-              //console.log("ïnset course: " + cRecord.timestamp)
-
+            });
+            if (cRecord !== null) {
+              if (cRecord.isValid()) {
+                delegate.course = cRecord;
+                try {
+                  await db.addCourse(cRecord);
+                } catch (err) {
+                  console.log(err.detail);
+                }
+                console.log("insert course: " + cRecord.toString());
+              }       
             }
-          }
-          if (pRecord.isValid()) {
-            delegate.position = pRecord;
-            await db.addPosition(pRecord);
-            //console.log("ïnset position: " + pRecord.timestamp)
-          }
-        });
+            
+            if (pRecord !== null) {
+              if (pRecord.isValid()) {
+                delegate.position = pRecord;
+                try {
+                  await db.addPosition(pRecord);
+                } catch (err) {
+                  console.log(err.detail);
+                }
+                console.log("insert position: " + pRecord)
+              } 
+            }    
+          } else {
+            //console.log("java not online")
+          } 
+      });
     }
 }
 

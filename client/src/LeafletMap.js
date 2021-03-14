@@ -5,10 +5,13 @@ import 'leaflet/dist/leaflet.css';
 import { Card }  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Collapse, Button, Row, Col, Menu, Dropdown} from 'antd';
-import { CaretRightOutlined, ConsoleSqlOutlined, DownOutlined} from '@ant-design/icons';
+import { DownOutlined} from '@ant-design/icons';
 import 'antd/dist/antd.css';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import CollapsePanel from 'antd/lib/collapse/CollapsePanel';
+import React, { useState, useEffect, useRef} from 'react';
+
+function isEmpty(obj) {
+    return Object.keys(obj).length === 0;
+}
 
 function MapEvents(props) {
     const map = useMapEvents({
@@ -16,7 +19,7 @@ function MapEvents(props) {
         props.mouse(e.latlng);
       }     
     })
-    return null
+    return null;
   }
 
 function Thumbnail(props) {
@@ -122,9 +125,9 @@ function LeafletMap(props) {
         interval = setInterval(() => {
             if(online) {
             getPosition().then(data => {
-                if (typeof(data) != "undefined") {
+                if (typeof(data) !== "undefined") {
                     setPhoto(data.photo)
-                    if (data.position !== {}) {
+                    if (data.position !== null) {
                         let lat = data.position.latitude;
                         let lng = data.position.longitude;
                         setPosition([L.latLng(lat, lng)]);
@@ -165,6 +168,8 @@ function LeafletMap(props) {
     }
 
     const mousePosition = async (latlng) => {
+        
+        console.log("click");
         try {
             const response = await fetch("http://" + host + '/mouse', {
                 method: 'POST',
@@ -203,9 +208,12 @@ function LeafletMap(props) {
             let response = await fetch("http://" + host + '/api');
             if (response.ok) {
                 const body = await response.json();
+                console.log(body)
                 if (body.gnss) {
                     setOnline(true);
                     pollServer(1000);
+                } else {
+                    alert("serial port closed - no gnss receiver detected")
                 }
                 return body; 
             } else {
@@ -228,9 +236,13 @@ function LeafletMap(props) {
                 } else {
                     try {
                         const body = await response.json();
-                        setRecording(body.message.recording);
+                        console.log(body);
+                        if (body.message !== null) {
+                            setRecording(body.message.recording);
+                        }
                         if (!body.open) {
                             setOnline(false);
+
                         } else {
                             return body;     
                         }          
@@ -241,13 +253,11 @@ function LeafletMap(props) {
                     //return body; 
             } catch {
                 setOnline(false);
-                //clearInterval(interval)
                 console.log("server error"); 
             }  
     };
 
       const clickAuto = (e) => {
-        console.log(e.target.innerHTML);
         if (e.target.innerHTML === "AUTO") {
             setMode("MANUAL")
         } else {
@@ -257,7 +267,7 @@ function LeafletMap(props) {
 
     const clickOnline = (e) => {
         e.preventDefault();
-        callBackendAPI(); 
+        let res = callBackendAPI(); 
     };
 
     const clickCamera = (e) => {
@@ -272,33 +282,36 @@ function LeafletMap(props) {
         setComPort(e.key);
     }
 
-      const clickRecord = async(e) => {
-        try {
-            let response = await fetch("http://" + host + '/record', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                  'Accept': 'application/json',
-                  'Content-Type': 'application/json',        
-                },
-                body: JSON.stringify({
-                  command: recording
-                })
-            });
-            if (response.ok) {
-                const body = await response.json();
-                console.log(body)
-                return body; 
-            } else {
-                console.log(response);
-                //setOnline(false);
-                return Error(response);
-            }
-        } catch {
-            //setOnline(false);
-            return new Error("record error")
-        } 
-      };
+    /**
+     * Handler for clicking record button. Starts and stops android camera
+     * @param {click event} e 
+     * @returns response
+     */
+    const clickRecord = async(e) => {
+    try {
+        let response = await fetch("http://" + host + '/record', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',        
+            },
+            body: JSON.stringify({
+                command: recording
+            })
+        });
+        if (response.ok) {
+            const body = await response.json();
+            console.log(body)
+            return body; 
+        } else {
+            console.log(response);
+            return Error(response);
+        }
+    } catch {
+        return new Error("record error")
+    } 
+    };
 
     const baudMenu = (
         <Menu onClick={e => clickBaud(e)}>
@@ -369,7 +382,6 @@ function LeafletMap(props) {
             scrollWheelZoom={true}
             keyboard={true}
         >
-        <MapEvents mouse={mousePosition}/>
         <div className="camera">
             <Card className="camera-card">
                 <Card.Body border="secondary">
@@ -518,6 +530,7 @@ function LeafletMap(props) {
             idx={idx}
           />
           )}
+           <MapEvents className="events" mouse={mousePosition}/>
       </MapContainer>
     </React.Fragment>
   );

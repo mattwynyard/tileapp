@@ -25,8 +25,7 @@ connection.on('error', error => {
 
 module.exports = { 
 
-    addPosition : (record) => {
-        
+    addPosition : (record) => {  
         return new Promise((resolve, reject) => {
             let sql = "INSERT INTO position(timestamp, latitude, longitude, altitude, quality, satellites, hdop, status) VALUES ( '" + record.timestamp + "'," +
             "" + record.latitude + ", " + record.longitude + ", " + record.altitude + ", '" + record.quality + "', " + record.satellites + "," +
@@ -47,8 +46,6 @@ module.exports = {
             "'" + record.status + "', " + record.course + ", " + record.speed + ")";
             connection.query(sql, (err, result) => {
                 if (err) {
-                    console.error('Error executing query', err.stack)
-                    console.log(record);
                     return reject(err);
                 }
                 return resolve(result);
@@ -58,12 +55,10 @@ module.exports = {
 
     insertPhoto : (record) => {
         return new Promise((resolve, reject) => {
-            let sql = "INSERT INTO photo(gnsstime, corrected, photo, savetime, frequency) VALUES ( '" +record.gnsstime + "'," +
+            let sql = "INSERT INTO photo(gnsstime, corrected, photo, savetime, frequency) VALUES ( '" + record.gnsstime + "'," +
             "'" + record.corrected + "', '" + record.photo + "', " + record.savetime +  ", " + record.frequency + ")";
             connection.query(sql, (err, result) => {
                 if (err) {
-                    console.error('Error executing query', err.stack)
-                    console.log(record);
                     return reject(err);
                 }
                 return resolve(result);

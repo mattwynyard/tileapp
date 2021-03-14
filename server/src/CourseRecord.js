@@ -14,8 +14,11 @@ class CourseRecord {
             return true;
         } else {
             return false;
-        }
-        
+        }  
+    }
+
+    toString() {
+        return "{timestamp: " + this.timestamp + ", status: " + this.status + ", course: " + this.course + ", speed: " + this.speed + "}"
     }
 }
 

@@ -4,6 +4,10 @@
     z-index: 1;
   }
 
+  .events {
+    z-index: 1;
+  }
+
   .svg-status {
     position:absolute; 
     top:10px; 
