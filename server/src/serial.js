@@ -98,7 +98,7 @@ class GNSSAdapter {
         });
 
         this.serialPort.on('data', async (data) => {
-          console.log(delegate.javaPID)
+          //console.log(delegate.javaPID)
           if ((delegate.javaPID !== null) && (typeof delegate.javaPID !== 'undefined')) {
             let pRecord = new Position();
             let cRecord = null;

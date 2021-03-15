@@ -10,7 +10,7 @@ const connection = new Client({
     password: process.env.PASSWORD,
     port: process.env.PORT,
     max: 20,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 connection.connect();
