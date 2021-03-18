@@ -13,7 +13,9 @@ const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 const usbDetect = require('usb-detection');
 
-var javaPID = null;
+const VENDOR_ID = 5446;
+
+let javaPID = null;
 let comPort = null;
 let adapter = null;
 /************************************************************** */
@@ -45,7 +47,7 @@ usbDetect.on('add', (device) => {
 });
 
 usbDetect.startMonitoring();
-comConnect(5446);
+comConnect(VENDOR_ID);
 
 app.listen(port, () => {
   console.log(`Listening: http://${host}:${port}`);
@@ -65,22 +67,30 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/mouse', async (req, res) => {
+app.post('/footpath', async (req, res) => {
   let result = await db.closestFootpath(req.body.lat, req.body.lng);
+  for (let i = 0; i < result.rows.length; i++) {
+    let completed = await db.isCompleted(result.rows[i].id);
+    if (completed.rowCount === 0) {
+      result.rows[i].grade = 0;
+    } else {
+      result.rows[i].grade = completed.rows[0].grade;
+    }
+  }
   res.send({ message: result.rows });
 });
 
-app.get('/api', async (req, res) => {
+app.post('/java', async (req, res) => {
   if (adapter !== null) {
     if (javaPID === null) {
-      let process = java.startJava("C12", false);
+      let process = java.startJava(req.body.camera, false);
       process.then((java) => {
         javaPID = java.pid;
         if (java.pid >= 0) { 
-          adapter.setJava(java.pid);
-          res.send({ java: 'starting', gnss: adapter.open });
+          //adapter.setJava(java.pid);
+          res.send({ java: 'Connecting', gnss: adapter.open });
         } else {
-          res.send({ java: 'error', gnss: adapter.open });
+          res.send({ java: 'Error', gnss: adapter.open });
         }
       });
     } else {
@@ -104,17 +114,44 @@ app.post('/record', async (req, res) => {
   res.send({ message: "ok" });
 });
 
+app.post('/grade', async (req, res) => {
+  console.log(req.body);
+  if (req.body.grade === "Reset") {
+    await db.deleteCompleted(req.body.id);
+    res.send({ message: "ok" });
+  } else {
+    let completed = await db.isCompleted(req.body.id);
+    if (completed.rowCount === 0) {
+      await db.insertCompleted(req.body.id, req.body.grade);
+    } else {
+      await db.updateCompleted(req.body.id, req.body.grade);
+    }
+    res.send({ message: "ok" });
+  }
+  
+  
+});
+
+ app.post('/gnss', async (req, res) => {
+  console.log(req.body);
+  console.log(adapter.open)
+  res.send({open: adapter.open, com: adapter.serialPort.path});
+});
+
 app.get('/position', async (req, res) => {
   let merged = null;
   if (adapter.open) {
-    try {
-    
+    try {   
     if (adapter.position === null) {
       res.send({ open: true, position: null, message: null, photo: null});
     } else {
       merged = {...adapter.course, ...adapter.position};
       let photo = java.getPhoto();
       let message = java.getMessage();
+      //console.log(message);
+      if(message.connected) {
+        adapter.setJava(javaPID);
+      }
       res.send({ open: adapter.open, position: merged, message: message, photo: photo});
     } 
     } catch (err) {

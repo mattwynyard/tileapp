@@ -80,4 +80,61 @@ module.exports = {
         });
     },
 
+    isCompleted: (id) => {
+        return new Promise((resolve, reject) => {
+            let sql = "SELECT id, grade FROM condition WHERE id = '" + id + "'";
+            connection.query(sql, (err, result) => {
+                if (err) {
+                    console.error('Error executing query', err.stack)
+                    return reject(err);
+                }
+                let carriage = resolve(result);
+                return carriage;
+            });
+        });
+    },
+
+    updateCompleted: (id, grade) => {
+        return new Promise((resolve, reject) => {
+            let sql = "UPDATE condition SET grade = '" +  grade + "' WHERE id = '" + id + "'";
+            connection.query(sql, (err, result) => {
+                if (err) {
+                    console.error('Error executing query', err.stack)
+                    return reject(err);
+                }
+                let carriage = resolve(result);
+                return carriage;
+            });
+        });
+    },
+
+    insertCompleted: (id, grade) => {
+        return new Promise((resolve, reject) => {
+            let sql = "INSERT INTO condition(id, grade) VALUES('" + id + "', " + grade +  ")";
+            connection.query(sql, (err, result) => {
+                if (err) {
+                    console.error('Error executing query', err.stack)
+                    return reject(err);
+                }
+                let carriage = resolve(result);
+                return carriage;
+            });
+        });
+    },
+
+    deleteCompleted: (id) => {
+        return new Promise((resolve, reject) => {
+            let sql = "DELETE FROM condition WHERE id = '" + id + "'";
+            connection.query(sql, (err, result) => {
+                if (err) {
+                    console.error('Error executing query', err.stack)
+                    return reject(err);
+                }
+                let carriage = resolve(result);
+                return carriage;
+            });
+        });
+    },
+
+
 }

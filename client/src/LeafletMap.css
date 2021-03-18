@@ -21,11 +21,24 @@
   .tool-menu {
     position:absolute;
     top:5px; 
-    right:5px;
-    width: 450px; 
+    right:0px;
+    width: 350px; 
     height: 40px;
     z-index: 1000;
     
+  }
+
+  .buttons {
+    position:absolute;
+    top:5px; 
+    left:150px;
+    width: 400px; 
+    height: 40px;
+    z-index: 1000;
+  }
+
+  .grade5-btn {
+    color: red;
   }
 
   .gps-panel {

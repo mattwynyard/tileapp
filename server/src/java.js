@@ -99,10 +99,6 @@ let server = net.createServer((socket) => { //'connection' listener
                     record.frequency = message[3];
                     let date = formatDate(message[0].substring(2, message[0].length - 4));
                     record.gnsstime = getNZST(date);
-                    console.log(record.gnsstime);
-                    // let d = new Date();
-                    // let timestamp = getNZST(d);
-                    // record.timestamp = timestamp;
                     if (ready === 0) {
                         timeFlag = date.toString();
                         ready = 1;
@@ -130,7 +126,6 @@ let server = net.createServer((socket) => { //'connection' listener
                         }
                     }    
                 } 
-
                 break;
             }     
       });

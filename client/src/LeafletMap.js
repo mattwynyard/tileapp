@@ -2,9 +2,9 @@ import './LeafletMap.css';
 import { MapContainer, TileLayer, CircleMarker, Polyline, useMap, useMapEvents, ScaleControl} from 'react-leaflet';
 import L, { LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Card }  from 'react-bootstrap';
+import { Card, Button as BButton}  from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Collapse, Button, Row, Col, Menu, Dropdown} from 'antd';
+import { Collapse, Button, Row, Col, Menu, Dropdown, Space, Modal} from 'antd';
 import { DownOutlined} from '@ant-design/icons';
 import 'antd/dist/antd.css';
 import React, { useState, useEffect, useRef} from 'react';
@@ -18,14 +18,11 @@ function MapEvents(props) {
       click: (e) => {
         props.mouse(e.latlng);
       }     
-    })
+    });
     return null;
   }
 
 function Thumbnail(props) {
-    useEffect(() => {
-
-    });
     if (props.photo !== null) {
         return (<img className="image"
         src={`data:image/jpeg;base64,${props.photo}`}/>
@@ -36,21 +33,10 @@ function Thumbnail(props) {
     
 }
 
+
   function FootpathPolyLine(props) {
     const redOptions = { color: 'red' }
     let otherOptions = null;
-
-    switch(props.positions.side) {
-        case "L":
-                otherOptions = { color: 'blue' }
-          break;
-        case "R":
-                otherOptions = { color: 'orange' }
-          break;
-        default:
-            otherOptions = { color: 'black' }
-        break;
-    }
     let geojson = JSON.parse(props.positions.geojson);
     let coords = []
     geojson.coordinates.forEach(element => {
@@ -59,10 +45,24 @@ function Thumbnail(props) {
         element[1] = temp;
         coords.push(element)
     });
+    switch(props.positions.grade) {
+        case 0:
+                otherOptions = { color: 'hotpink' }
+          break;
+        default:
+            otherOptions = { color: 'lime' }
+        break;
+    }
     return ( <Polyline
         key={`marker-${props.idx}`} 
-        pathOptions={(props.idx == 0) ? redOptions: otherOptions}
-        positions={coords}     
+        pathOptions={(props.idx === 0) ? redOptions: otherOptions}
+        positions={coords} 
+        weight={5}
+        eventHandlers={ (props.idx === 0) ? {
+            click: () => {
+              props.parentShowModal(true, props.positions.id, props.positions.grade, props.positions.label, props.positions.side);
+            },
+          } : null}
         >
       </Polyline>);
   }
@@ -88,6 +88,8 @@ function LeafletMap(props) {
         savetime: "---",
     }
 
+    const gradeButtons = [1, 2, 3, 4 ,5]
+
     const EARTH_RADIUS = 6371000 //metres
     const [latlng, setPosition] = useState([]);
     const [footpaths, setFootpaths] = useState([]);
@@ -98,12 +100,44 @@ function LeafletMap(props) {
     const [cameraData, setCameraData] = useState([cameraObj]);
     const [host] = useState("localhost:5000");
     const [gnssOnline, setgnssOnline] = useState(false);
-    const [camera, setCamera] = useState("Offline");
+    const [camera, setCamera] = useState("Connect");
+    const [connectDisabled, setConnectDisabled] = useState(true);
     const [recording, setRecording] = useState(false);
     const [cameraName, setCameraName] = useState("---");
     const [baud, setBaud] = useState("---");
     const [comPort, setComPort] = useState("---");
+    const [label, setLabel] = useState(null);
+    const [grade, setGrade] = useState(null);
+    const [side, setSide] = useState(null);
+    const [id, setId] = useState(null);
     const positionRef = useRef();
+    const [isModalVisible, setIsModalVisible] = useState(false);
+
+    const showModal = (isVisible, id, grade, label, side) => {
+        setId(id);
+        setLabel(label);
+        setGrade(grade);
+        setSide(side);
+        setIsModalVisible(isVisible);
+      };
+    
+      const handleOk = () => {
+        setIsModalVisible(false);
+      };
+    
+      const handleCancel = () => {
+        setIsModalVisible(false);
+      };
+
+    useEffect(() => {
+        console.log("mount camera")
+        let camera = localStorage.getItem("camera");
+        if (camera === null) {
+            setCameraName("---");
+        } else {
+            setCameraName(camera);
+        }
+    },[cameraName]);
        /**
      * Calculates distance on earth surface
      */
@@ -115,10 +149,6 @@ function LeafletMap(props) {
     const setOnline = (isOnline) => {
         setgnssOnline(isOnline);
         online = isOnline;
-    }
-
-    const getOnline = () => {
-        return online;
     }
 
     const pollServer = (rate) => {    
@@ -169,9 +199,46 @@ function LeafletMap(props) {
 
     const mousePosition = async (latlng) => {
         
-        console.log("click");
+        if (mode === "MANUAL") {
+            try {
+                const response = await fetch("http://" + host + '/footpath', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',        
+                    },
+                    body: JSON.stringify({
+                        project: project,
+                        lat: latlng.lat,
+                        lng: latlng.lng,
+                    })
+                });
+                if (response.ok) {
+                    const body = await response.json();
+                    let fp = []
+                    //console.log(calcGCDistance(body.message[0].dist));
+                    for (let i = 0; i < body.message.length; i++) {
+                        fp.push(body.message[i])
+                    }
+                    setFootpaths(fp);
+                    return body; 
+                } else {
+                    
+                    return Error(response);
+                }
+            } catch {
+                setOnline(false);
+                return new Error("connection error")
+            }    
+        }
+        
+    };
+
+    const updateGrade = async (id, grade) => {
+        
         try {
-            const response = await fetch("http://" + host + '/mouse', {
+            const response = await fetch("http://" + host + '/grade', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -180,18 +247,13 @@ function LeafletMap(props) {
                 },
                 body: JSON.stringify({
                     project: project,
-                    lat: latlng.lat,
-                    lng: latlng.lng,
+                    id: id,
+                    grade: grade,
                 })
             });
             if (response.ok) {
                 const body = await response.json();
-                let fp = []
-                ///console.log(calcGCDistance(body.message[0].dist));
-                for (let i = 0; i < body.message.length; i++) {
-                    fp.push(body.message[i])
-                }
-                setFootpaths(fp);
+                
                 return body; 
             } else {
                 
@@ -200,20 +262,27 @@ function LeafletMap(props) {
         } catch {
             setOnline(false);
             return new Error("connection error")
-        }    
+        }      
     };
     
     const callBackendAPI = async () => {
         try {
-            let response = await fetch("http://" + host + '/api');
+            const response = await fetch("http://" + host + '/java', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',        
+                },
+                body: JSON.stringify({
+                    camera: cameraName,
+                })
+            });
             if (response.ok) {
                 const body = await response.json();
-                console.log(body)
-                if (body.gnss) {
-                    setOnline(true);
-                    pollServer(1000);
-                } else {
-                    alert("serial port closed - no gnss receiver detected")
+
+                if (body.java === "Connecting") {
+                    setCamera(body.java);
                 }
                 return body; 
             } else {
@@ -230,13 +299,15 @@ function LeafletMap(props) {
       
     const getPosition = async () => {
             try {
-                const response = await fetch("http://" + host + '/position')
+                const response = await fetch("http://" + host + '/position') 
                 if (!response.ok) {
                     throw Error(response) 
                 } else {
                     try {
                         const body = await response.json();
-                        console.log(body);
+                        if(body.message.connected) {
+                            setCamera("Connected");
+                        } 
                         if (body.message !== null) {
                             setRecording(body.message.recording);
                         }
@@ -253,15 +324,17 @@ function LeafletMap(props) {
                     //return body; 
             } catch {
                 setOnline(false);
+                setRecording(false);
+                setCamera("Error");
                 console.log("server error"); 
             }  
     };
 
       const clickAuto = (e) => {
         if (e.target.innerHTML === "AUTO") {
-            setMode("MANUAL")
+            setMode("MANUAL");
         } else {
-            setMode("AUTO")
+            setMode("AUTO");
         }
       };
 
@@ -271,6 +344,7 @@ function LeafletMap(props) {
     };
 
     const clickCamera = (e) => {
+        localStorage.setItem("camera", e.key);
         setCameraName(e.key);
     }
 
@@ -282,35 +356,84 @@ function LeafletMap(props) {
         setComPort(e.key);
     }
 
+    const clickGrade = (e) => {
+        setGrade(e.target.innerText);
+        updateGrade(id, e.target.innerText);        
+    }
+
     /**
      * Handler for clicking record button. Starts and stops android camera
      * @param {click event} e 
      * @returns response
      */
     const clickRecord = async(e) => {
-    try {
-        let response = await fetch("http://" + host + '/record', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',        
-            },
-            body: JSON.stringify({
-                command: recording
-            })
-        });
-        if (response.ok) {
-            const body = await response.json();
-            console.log(body)
-            return body; 
-        } else {
-            console.log(response);
-            return Error(response);
+        if (camera === "Connected") {
+            try {
+                let response = await fetch("http://" + host + '/record', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',        
+                    },
+                    body: JSON.stringify({
+                        command: recording
+                    })
+                });
+                if (response.ok) {
+                    const body = await response.json();
+                    console.log(body)
+                    return body; 
+                } else {
+                    console.log(response);
+                    return Error(response);
+                }
+            } catch {
+                return new Error("record error")
+            } 
         }
-    } catch {
-        return new Error("record error")
-    } 
+    
+    };
+
+    /**
+     * Handler for clicking gnss button. Checks if gnss online on server
+     * @param {click event} e 
+     * @returns response
+     */
+     const clickGnss = async(e) => {
+        if(!gnssOnline) {
+            try {
+                let response = await fetch("http://" + host + '/gnss', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',        
+                    },
+                    body: JSON.stringify({
+                        com: comPort,
+                        baud: baud
+                    })
+                });
+                if (response.ok) {
+                    const body = await response.json();
+                    console.log(body)
+                    if (body.open) {
+                        setComPort(body.com)
+                        setOnline(true);
+                        setConnectDisabled(false);
+                        pollServer(1000);
+                    }
+                    return body; 
+                } else {
+                    console.log(response);
+                    return Error(response);
+                }
+            } catch {
+                return new Error("record error")
+            } 
+        }
+        
     };
 
     const baudMenu = (
@@ -382,35 +505,69 @@ function LeafletMap(props) {
             scrollWheelZoom={true}
             keyboard={true}
         >
-        <div className="camera">
+        <TileLayer
+          attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          //url="/tiles/auckland/{z}/{x}/{y}.png"
+        />
+         <ScaleControl name="Scale" className="scale"/>
+        {latlng.map((position, idx) =>
+            <CircleMarker 
+              key={`marker-${idx}`} 
+              center={position}
+              radius ={5}
+              fill={true}
+              fillOpacity={1.0}
+              color={gnssOnline ? "blue": "red"}
+              eventHandlers={{
+                click: () => {
+                  console.log('marker clicked')
+                },
+              }}
+              >        
+            </CircleMarker>
+          )}
+          {footpaths.map((positions, idx) =>
+          <FootpathPolyLine
+            key={`marker-${idx}`} 
+            parentShowModal={showModal}
+            positions={positions}
+            idx={idx}
+          />
+          )}
+           <MapEvents className="events" mouse={mousePosition}/>
+      </MapContainer>
+      <div className="camera">
             <Card className="camera-card">
-                <Card.Body border="secondary">
-                    <Button 
-                        className="connect=btn"
-                        variant="primary" 
-                        size="sm"
-                        onClick={clickOnline} 
-                        >{camera}
-                    </Button>           
+                <Card.Body border="secondary">                    
                  <div>
                     <Thumbnail photo={photo}/>
-                </div>   
-                {/* </Card.Title> */}
-                    
-                    
+                </div>    
                 </Card.Body>
             </Card>
         </div>  
+        <div  className="buttons">
+            <Space>
+            <Button 
+                className="mode=btn"
+                type="default"
+                size="large"
+                onClick={clickAuto}
+            >{mode}
+            </Button>
+            <Button 
+                className="connect=btn"
+                variant="primary"
+                size="large"
+                disabled={connectDisabled} 
+                onClick={clickOnline} 
+                >{camera}
+            </Button>      
+            </Space>
+            
+        </div>          
         <Row className="tool-menu">
-            <Col className="mode-col" span={4}>
-                <Button 
-                    className="mode=btn"
-                    type="default"
-                    onClick={clickAuto}
-                >{mode}
-                </Button>
-            </Col>
-            <Col className="camera-menu" span={8}>
+            <Col className="camera-menu" span={10}>
                 <Collapse >
                     <svg 
                         className="svg-status" 
@@ -448,10 +605,9 @@ function LeafletMap(props) {
                     </div>  
                     )}
                     </Collapse.Panel>
-                    </Collapse>
-                    
+                </Collapse>         
             </Col>
-            <Col className="gps-menu" span={9}>
+            <Col className="gps-menu" span={10}>
                 <Collapse >
                     <svg 
                         className="svg-status" 
@@ -459,6 +615,7 @@ function LeafletMap(props) {
                         width="16" 
                         stroke={gnssOnline ? "limegreen": "red"} 
                         fill={gnssOnline ? "limegreen": "red"} 
+                        onClick={clickGnss}
                         >
                         <circle cx="5" cy="5" r="3" />
                     </svg>       
@@ -482,8 +639,7 @@ function LeafletMap(props) {
                         <Dropdown overlay={baudMenu} trigger="click"  className="camera-dropdown">
                             <span className="camera-panel"  onClick={e => e.preventDefault()}>
                             {baud}<DownOutlined />
-                            </span>
-                            
+                            </span>                   
                         </Dropdown ><br></br>
                         </div>  
                         <b>{"COM Port: "}</b>
@@ -497,41 +653,66 @@ function LeafletMap(props) {
                     </Collapse.Panel>
                 </Collapse>
             </Col>
+            
         </Row>
-        
-        <TileLayer
-          attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          //url="/tiles/auckland/{z}/{x}/{y}.png"
-        />
-         <ScaleControl name="Scale" className="scale"/>
-        {latlng.map((position, idx) =>
-            <CircleMarker 
-              ref={positionRef}
-              key={`marker-${idx}`} 
-              center={position}
-              radius ={5}
-              fill={true}
-              fillOpacity={1.0}
-              color={online ? "blue": "red"}
-              eventHandlers={{
-                click: () => {
-                  console.log('marker clicked')
-                },
-              }}
-              >
-              
-            </CircleMarker>
-          )}
-          {footpaths.map((positions, idx) =>
-          <FootpathPolyLine
-            key={`marker-${idx}`} 
-            positions={positions}
-            idx={idx}
-          />
-          )}
-           <MapEvents className="events" mouse={mousePosition}/>
-      </MapContainer>
+        <Modal title={label + " Grade: " + grade} centered={true} width={400} visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
+        <Space>
+            <Button 
+                id={1}
+                className="grade1"
+                type="default"
+                size="large"
+                onClick={e => clickGrade(e)}
+                >
+                <b>1</b>
+            </Button>
+            <Button 
+                id={2}
+                className="grade2"
+                type="default"
+                size="large"
+                onClick={clickGrade}
+                >
+                <b>2</b>
+            </Button>
+            <Button 
+                id={3}
+                className="grade1=btn"
+                type="default"
+                size="large"
+                onClick={clickGrade}
+                >
+                <b>3</b>
+            </Button>
+            <Button 
+                id={4}
+                className="grade1=btn"
+                type="default"
+                size="large"
+                onClick={clickGrade}
+                >
+                <b>4</b>
+            </Button>
+            <Button 
+                id={5}
+                className="grade1=btn"
+                type="default"
+                size="large"
+                onClick={clickGrade}
+                >
+                <b>5</b>
+            </Button>
+            <Button 
+                id={0}
+                className="grade1=btn"
+                type="default"
+                size="large"
+                onClick={clickGrade}
+                >
+                <b>Reset</b>
+            </Button>
+        </Space>
+      </Modal>
     </React.Fragment>
   );
 }
