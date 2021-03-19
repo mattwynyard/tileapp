@@ -80,6 +80,21 @@ app.post('/footpath', async (req, res) => {
   res.send({ message: result.rows });
 });
 
+app.post('/footpaths', async (req, res) => {
+  let result = await db.footpath();
+  let box = await db.bbox();
+  let extent = box.rows[0];
+  for (let i = 0; i < result.rows.length; i++) {
+    let completed = await db.isCompleted(result.rows[i].id);
+    if (completed.rowCount === 0) {
+      result.rows[i].grade = 0;
+    } else {
+      result.rows[i].grade = completed.rows[0].grade;
+    }
+  }
+  res.send({ data: result.rows, bbox: extent });
+});
+
 app.post('/java', async (req, res) => {
   if (adapter !== null) {
     if (javaPID === null) {

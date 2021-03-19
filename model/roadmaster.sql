@@ -96,6 +96,17 @@ CREATE TABLE public.centrelinefp (
 
 
 --
+-- Name: condition; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.condition (
+    id text NOT NULL,
+    grade integer NOT NULL,
+    inserted timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: course; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -104,6 +115,21 @@ CREATE TABLE public.course (
     status text,
     course real,
     speed real,
+    inserted timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: faults; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.faults (
+    id text NOT NULL,
+    grade integer NOT NULL,
+    type text NOT NULL,
+    count integer,
+    width real,
+    length real,
     inserted timestamp with time zone NOT NULL
 );
 
@@ -2187,10 +2213,26 @@ HWDC_FP_1120_1255	214	506	538	R	Kerb	\N	2.7	\N	\N	\N	\N	\N	\N	\N	YORK ST	LINESTR
 
 
 --
+-- Data for Name: condition; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.condition (id, grade, inserted) FROM stdin;
+\.
+
+
+--
 -- Data for Name: course; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.course ("timestamp", status, course, speed, inserted) FROM stdin;
+\.
+
+
+--
+-- Data for Name: faults; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.faults (id, grade, type, count, width, length, inserted) FROM stdin;
 \.
 
 
@@ -2227,11 +2269,19 @@ ALTER TABLE ONLY public.centrelinefp
 
 
 --
--- Name: course course_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: condition condition_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.course
-    ADD CONSTRAINT course_pkey PRIMARY KEY ("timestamp");
+ALTER TABLE ONLY public.condition
+    ADD CONSTRAINT condition_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: faults faults_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faults
+    ADD CONSTRAINT faults_pkey PRIMARY KEY (id);
 
 
 --
@@ -2251,6 +2301,20 @@ ALTER TABLE ONLY public.photo
 
 
 --
+-- Name: geom_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX geom_idx ON public.centrelinefp USING gist (geom);
+
+
+--
+-- Name: timestamp_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX timestamp_idx ON public.course USING btree ("timestamp");
+
+
+--
 -- Name: course insertNow; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -2262,6 +2326,13 @@ CREATE TRIGGER "insertNow" BEFORE INSERT ON public.course FOR EACH ROW EXECUTE F
 --
 
 CREATE TRIGGER "insertNow" BEFORE INSERT ON public."position" FOR EACH ROW EXECUTE FUNCTION public.now();
+
+
+--
+-- Name: condition now; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER now BEFORE INSERT ON public.condition FOR EACH ROW EXECUTE FUNCTION public.now();
 
 
 --

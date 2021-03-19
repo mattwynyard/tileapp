@@ -17,10 +17,22 @@ function MapEvents(props) {
     const map = useMapEvents({
       click: (e) => {
         props.mouse(e.latlng);
-      }     
+        //map.panTo(e.latlng);
+      },     
     });
+
     return null;
   }
+
+  function MapData(props) {
+    const map = useMap();
+    if (props.bounds !== null) {
+        map.fitBounds(props.bounds)
+    } 
+    
+    return null;
+  }
+
 
 function Thumbnail(props) {
     if (props.photo !== null) {
@@ -33,7 +45,6 @@ function Thumbnail(props) {
     
 }
 
-
   function FootpathPolyLine(props) {
     const redOptions = { color: 'red' }
     let otherOptions = null;
@@ -45,11 +56,18 @@ function Thumbnail(props) {
         element[1] = temp;
         coords.push(element)
     });
+    let arr = props.positions.id.split('_');
     switch(props.positions.grade) {
         case 0:
-                otherOptions = { color: 'hotpink' }
+            if (arr[arr.length - 1] % 2 === 0) {
+                otherOptions = { color: 'orange' }
+            } else {
+                otherOptions = { color: 'blue' } 
+            }
+     
           break;
         default:
+            
             otherOptions = { color: 'lime' }
         break;
     }
@@ -110,7 +128,7 @@ function LeafletMap(props) {
     const [grade, setGrade] = useState(null);
     const [side, setSide] = useState(null);
     const [id, setId] = useState(null);
-    const positionRef = useRef();
+    const [bounds, setBounds] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
     const showModal = (isVisible, id, grade, label, side) => {
@@ -138,12 +156,40 @@ function LeafletMap(props) {
             setCameraName(camera);
         }
     },[cameraName]);
+
+    useEffect(() => {
+        console.log("bounds");
+    },[bounds]);
+
+    useEffect(() => {
+        
+        projectFootpaths();
+
+    },[]);
        /**
      * Calculates distance on earth surface
      */
     const calcGCDistance = (distance) => {
         return distance * EARTH_RADIUS * (Math.PI /180);
     }
+
+    const getBounds = (bounds) => {
+        let i = bounds.indexOf("(");
+        let j = bounds.indexOf(")");
+        let boundsStr = bounds.substring(i + 1, j);
+        let s = boundsStr.split(",");
+        let cornerA = s[0].split(" ");
+        let cornerB = s[1].split(" ");
+        let latmin = Number(cornerA[1]);
+        let lngmin = Number(cornerA[0]);
+        let latmax = Number(cornerB[1]);
+        let lngmax = Number(cornerB[0])
+        let corner1 = L.latLng(latmax, lngmin);
+
+        let corner2 = L.latLng(latmin, lngmax);
+        return L.latLngBounds(corner1, corner2);
+    }
+
     let online = false;
     let interval = null;
     const setOnline = (isOnline) => {
@@ -196,6 +242,45 @@ function LeafletMap(props) {
         }          
         }, rate);     
     }
+
+    const projectFootpaths = async () => {
+        
+        //if (mode === "MANUAL") {
+            try {
+                const response = await fetch("http://" + host + '/footpaths', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',        
+                    },
+                    body: JSON.stringify({
+                        project: project,
+                    })
+                });
+                if (response.ok) {
+                    const body = await response.json();
+                    let bounds = getBounds(body.bbox.extent);
+                    setBounds(bounds);
+                    
+                    let fp = []
+                    //console.log(calcGCDistance(body.message[0].dist));
+                    for (let i = 0; i < body.data.length; i++) {
+                        fp.push(body.data[i])
+                    }
+                    setFootpaths(fp);
+                    return body; 
+                } else {
+                    
+                    return Error(response);
+                }
+            } catch {
+                setOnline(false);
+                return new Error("connection error")
+            }    
+        //}
+        
+    };
 
     const mousePosition = async (latlng) => {
         
@@ -504,6 +589,12 @@ function LeafletMap(props) {
             maxZoom={18}
             scrollWheelZoom={true}
             keyboard={true}
+            
+            eventHandlers={{
+                load: () => {
+                  console.log('onload')
+                },
+              }}
         >
         <TileLayer
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
@@ -536,6 +627,7 @@ function LeafletMap(props) {
           />
           )}
            <MapEvents className="events" mouse={mousePosition}/>
+           <MapData className="mapData" bounds={bounds} center={latlng}/>
       </MapContainer>
       <div className="camera">
             <Card className="camera-card">
