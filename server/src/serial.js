@@ -138,9 +138,6 @@ class GNSSAdapter {
                       } 
                       cRecord.speed = Number(data[7]  * 1.852).toFixed(2); //knots->metres
                       break;
-                    case "$GNVTG":
-                      //console.log(data)
-                      break;
                     default:
                       break;
                   }
@@ -162,7 +159,7 @@ class GNSSAdapter {
               if (java) {
                 try {
                   await db.addCourse(cRecord);
-                  console.log("insert course: " + cRecord.toString());
+                  //console.log("insert course: " + cRecord.toString());
                 } catch (err) {
                   console.log(err.detail);
                 }            
@@ -176,7 +173,7 @@ class GNSSAdapter {
               if (java) {
                 try {
                   await db.addPosition(pRecord);
-                  console.log("insert position: " + pRecord)
+                  //console.log("insert position: " + pRecord)
                 } catch (err) {
                   console.log(err.detail);
                 }

@@ -9,6 +9,8 @@ import { DownOutlined} from '@ant-design/icons';
 import 'antd/dist/antd.css';
 import React, { useState, useEffect, useRef} from 'react';
 
+
+
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
@@ -130,6 +132,7 @@ function LeafletMap(props) {
     const [id, setId] = useState(null);
     const [bounds, setBounds] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [intervalgnss, setInterval] = useState(null);
 
     const showModal = (isVisible, id, grade, label, side) => {
         setId(id);
@@ -162,10 +165,8 @@ function LeafletMap(props) {
     },[bounds]);
 
     useEffect(() => {
-        
-        projectFootpaths();
-
-    },[]);
+ 
+    },[gnssOnline]);
        /**
      * Calculates distance on earth surface
      */
@@ -199,6 +200,7 @@ function LeafletMap(props) {
 
     const pollServer = (rate) => {    
         interval = setInterval(() => {
+           
             if(online) {
             getPosition().then(data => {
                 if (typeof(data) !== "undefined") {
@@ -240,7 +242,8 @@ function LeafletMap(props) {
                 }               
             })
         }          
-        }, rate);     
+        }, rate);   
+        
     }
 
     const projectFootpaths = async () => {
@@ -486,6 +489,7 @@ function LeafletMap(props) {
      * @returns response
      */
      const clickGnss = async(e) => {
+        
         if(!gnssOnline) {
             try {
                 let response = await fetch("http://" + host + '/gnss', {
@@ -517,6 +521,10 @@ function LeafletMap(props) {
             } catch {
                 return new Error("record error")
             } 
+        } else {
+            setOnline(false);
+            console.log(interval)
+            clearInterval(intervalgnss)
         }
         
     };
@@ -599,7 +607,7 @@ function LeafletMap(props) {
         <TileLayer
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          //url="/tiles/auckland/{z}/{x}/{y}.png"
+          //url="/auckland/{z}/{x}/{y}.png"
         />
          <ScaleControl name="Scale" className="scale"/>
         {latlng.map((position, idx) =>
@@ -627,7 +635,7 @@ function LeafletMap(props) {
           />
           )}
            <MapEvents className="events" mouse={mousePosition}/>
-           <MapData className="mapData" bounds={bounds} center={latlng}/>
+           {/* <MapData className="mapData" bounds={bounds} center={latlng}/> */}
       </MapContainer>
       <div className="camera">
             <Card className="camera-card">
