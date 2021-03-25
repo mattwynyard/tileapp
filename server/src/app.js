@@ -12,6 +12,7 @@ const { } = require('helmet');
 const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 const usbDetect = require('usb-detection');
+const path = require('path');
 
 const VENDOR_ID = 5446;
 
@@ -55,16 +56,22 @@ app.listen(port, () => {
  
 app.use(cors());
 app.use(morgan('dev'));
-app.use(helmet());
+//app.use(helmet());
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.json({limit: '50mb', extended: false}));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: false }))
 // Parse JSON bodies (as sent by API clients)
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  //res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   next();
+});
+
+app.get('/auckland/:z/:x/:y', async (req, res) => {
+
+  res.sendFile(path.join(__dirname, '../', req.url));
+
 });
 
 app.post('/footpath', async (req, res) => {

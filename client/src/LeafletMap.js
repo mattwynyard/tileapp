@@ -131,6 +131,7 @@ function LeafletMap(props) {
     const [side, setSide] = useState(null);
     const [id, setId] = useState(null);
     const [bounds, setBounds] = useState(null);
+    const [counter, setCounter] = useState(0);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [intervalgnss, setInterval] = useState(null);
 
@@ -165,14 +166,31 @@ function LeafletMap(props) {
     },[bounds]);
 
     useEffect(() => {
- 
-    },[gnssOnline]);
+        const interval = setInterval(() => {
+            console.log("timer")
+          }, 1000);
+          return () => clearInterval(interval);
+        }, [],);
+
        /**
      * Calculates distance on earth surface
      */
     const calcGCDistance = (distance) => {
         return distance * EARTH_RADIUS * (Math.PI /180);
     }
+
+    useEffect(
+        () => {
+            const id = setTimeout(() => {
+            setCounter(counter + 1); 
+            console.log(counter);
+            }, 1000);
+            return () => {
+            clearTimeout(id);
+            };
+        },
+        [counter],
+    );
 
     const getBounds = (bounds) => {
         let i = bounds.indexOf("(");
@@ -192,56 +210,57 @@ function LeafletMap(props) {
     }
 
     let online = false;
-    let interval = null;
+    //let interval = null;
+
     const setOnline = (isOnline) => {
         setgnssOnline(isOnline);
         online = isOnline;
     }
 
     const pollServer = (rate) => {    
-        interval = setInterval(() => {
-           
-            if(online) {
-            getPosition().then(data => {
-                if (typeof(data) !== "undefined") {
-                    setPhoto(data.photo)
-                    if (data.position !== null) {
-                        let lat = data.position.latitude;
-                        let lng = data.position.longitude;
-                        setPosition([L.latLng(lat, lng)]);
-                        setGpsData([data.position]);
-                        let f = null;
-                        let s = null;
-                        let fq = null;
+        const interval = setInterval(() => {
+            console.log(rate);
+            //if(online) {
+            // getPosition().then(data => {
+            //     if (typeof(data) !== "undefined") {
+            //         setPhoto(data.photo)
+            //         if (data.position !== null) {
+            //             let lat = data.position.latitude;
+            //             let lng = data.position.longitude;
+            //             setPosition([L.latLng(lat, lng)]);
+            //             setGpsData([data.position]);
+            //             let f = null;
+            //             let s = null;
+            //             let fq = null;
 
-                        if (data.message.filename == null) {
-                            f = "---"
-                        } else {
-                            let filename = data.message.filename.split("_");
-                            f = filename[filename.length - 1]
-                        }
-                        if (data.message.frequency == null) {
-                            fq = "---"
-                        } else {
-                            fq = data.message.frequency
-                        }
-                        if (data.message.savetime == null) {
-                            s = "---"
-                        } else {
-                            s = data.message.savetime
-                        }
-                        let cameraObj = {
-                            battery: data.message.battery,
-                            error: data.message.error,
-                            frequency: fq,
-                            filename: f,
-                            savetime: s,
-                        }
-                        setCameraData([cameraObj]);   
-                    }    
-                }               
-            })
-        }          
+            //             if (data.message.filename == null) {
+            //                 f = "---"
+            //             } else {
+            //                 let filename = data.message.filename.split("_");
+            //                 f = filename[filename.length - 1]
+            //             }
+            //             if (data.message.frequency == null) {
+            //                 fq = "---"
+            //             } else {
+            //                 fq = data.message.frequency
+            //             }
+            //             if (data.message.savetime == null) {
+            //                 s = "---"
+            //             } else {
+            //                 s = data.message.savetime
+            //             }
+            //             let cameraObj = {
+            //                 battery: data.message.battery,
+            //                 error: data.message.error,
+            //                 frequency: fq,
+            //                 filename: f,
+            //                 savetime: s,
+            //             }
+            //             setCameraData([cameraObj]);   
+            //         }    
+            //     }               
+            // })
+        //}          
         }, rate);   
         
     }
@@ -387,11 +406,13 @@ function LeafletMap(props) {
       
     const getPosition = async () => {
             try {
-                const response = await fetch("http://" + host + '/position') 
+                const response = await fetch("http://" + host + '/position');
+                console.log(response)
                 if (!response.ok) {
                     throw Error(response) 
                 } else {
                     try {
+                       
                         const body = await response.json();
                         if(body.message.connected) {
                             setCamera("Connected");
@@ -402,14 +423,12 @@ function LeafletMap(props) {
                         if (!body.open) {
                             setOnline(false);
 
-                        } else {
-                            return body;     
-                        }          
+                        } 
+                        return body;          
                     } catch {
                         console.log("position error")
                     }      
                 }
-                    //return body; 
             } catch {
                 setOnline(false);
                 setRecording(false);
@@ -510,7 +529,7 @@ function LeafletMap(props) {
                     if (body.open) {
                         setComPort(body.com)
                         setOnline(true);
-                        setConnectDisabled(false);
+                        //setConnectDisabled(false);
                         pollServer(1000);
                     }
                     return body; 
@@ -523,8 +542,8 @@ function LeafletMap(props) {
             } 
         } else {
             setOnline(false);
-            console.log(interval)
-            clearInterval(intervalgnss)
+
+            //clearInterval(intervalgnss)
         }
         
     };
@@ -606,8 +625,8 @@ function LeafletMap(props) {
         >
         <TileLayer
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          //url="/auckland/{z}/{x}/{y}.png"
+          //url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="http://localhost:5000/auckland/{z}/{x}/{y}.png"
         />
          <ScaleControl name="Scale" className="scale"/>
         {latlng.map((position, idx) =>

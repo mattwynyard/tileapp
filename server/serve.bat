@@ -1,0 +1,1 @@
+serve -s build -l tcp://localhost:3000

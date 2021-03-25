@@ -12,6 +12,7 @@
 # production
 /client/build
 /client/public/tiles
+/server/auckland
 /server/.env
 /server/server.cert
 /server/server.key
