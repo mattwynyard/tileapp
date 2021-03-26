@@ -133,7 +133,9 @@ function LeafletMap(props) {
     const [bounds, setBounds] = useState(null);
     const [counter, setCounter] = useState(0);
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [intervalgnss, setInterval] = useState(null);
+
+    const gnssButton = useRef(null);
+
 
     const showModal = (isVisible, id, grade, label, side) => {
         setId(id);
@@ -166,11 +168,14 @@ function LeafletMap(props) {
     },[bounds]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            console.log("timer")
-          }, 1000);
-          return () => clearInterval(interval);
-        }, [],);
+        let marker = gnssButton.current;
+        if (marker === null) return;
+        if (gnssOnline) {
+            marker.setStyle({color: 'blue'});
+        } else {
+            marker.setStyle({color: 'red'});
+        }
+        }, [gnssOnline]);
 
        /**
      * Calculates distance on earth surface
@@ -181,12 +186,54 @@ function LeafletMap(props) {
 
     useEffect(
         () => {
-            const id = setTimeout(() => {
+            const id = setInterval(() => {
             setCounter(counter + 1); 
-            console.log(counter);
+            if (gnssOnline) {
+                getPosition().then(data => {
+                    if (typeof(data) !== "undefined") {
+                        setPhoto(data.photo)
+                        if (data.position !== null) {
+                            let lat = data.position.latitude;
+                            let lng = data.position.longitude;
+                            setPosition([L.latLng(lat, lng)]);
+                            setGpsData([data.position]);
+                            let f = null;
+                            let s = null;
+                            let fq = null;
+    
+                            if (data.message.filename == null) {
+                                f = "---"
+                            } else {
+                                let filename = data.message.filename.split("_");
+                                f = filename[filename.length - 1]
+                            }
+                            if (data.message.frequency == null) {
+                                fq = "---"
+                            } else {
+                                fq = data.message.frequency
+                            }
+                            if (data.message.savetime == null) {
+                                s = "---"
+                            } else {
+                                s = data.message.savetime
+                            }
+                            let cameraObj = {
+                                battery: data.message.battery,
+                                error: data.message.error,
+                                frequency: fq,
+                                filename: f,
+                                savetime: s,
+                            }
+                            setCameraData([cameraObj]);   
+                        }    
+                    }               
+                });
+                
+            }
+            
             }, 1000);
             return () => {
-            clearTimeout(id);
+            clearInterval(id);
             };
         },
         [counter],
@@ -210,59 +257,10 @@ function LeafletMap(props) {
     }
 
     let online = false;
-    //let interval = null;
 
     const setOnline = (isOnline) => {
         setgnssOnline(isOnline);
         online = isOnline;
-    }
-
-    const pollServer = (rate) => {    
-        const interval = setInterval(() => {
-            console.log(rate);
-            //if(online) {
-            // getPosition().then(data => {
-            //     if (typeof(data) !== "undefined") {
-            //         setPhoto(data.photo)
-            //         if (data.position !== null) {
-            //             let lat = data.position.latitude;
-            //             let lng = data.position.longitude;
-            //             setPosition([L.latLng(lat, lng)]);
-            //             setGpsData([data.position]);
-            //             let f = null;
-            //             let s = null;
-            //             let fq = null;
-
-            //             if (data.message.filename == null) {
-            //                 f = "---"
-            //             } else {
-            //                 let filename = data.message.filename.split("_");
-            //                 f = filename[filename.length - 1]
-            //             }
-            //             if (data.message.frequency == null) {
-            //                 fq = "---"
-            //             } else {
-            //                 fq = data.message.frequency
-            //             }
-            //             if (data.message.savetime == null) {
-            //                 s = "---"
-            //             } else {
-            //                 s = data.message.savetime
-            //             }
-            //             let cameraObj = {
-            //                 battery: data.message.battery,
-            //                 error: data.message.error,
-            //                 frequency: fq,
-            //                 filename: f,
-            //                 savetime: s,
-            //             }
-            //             setCameraData([cameraObj]);   
-            //         }    
-            //     }               
-            // })
-        //}          
-        }, rate);   
-        
     }
 
     const projectFootpaths = async () => {
@@ -299,9 +297,7 @@ function LeafletMap(props) {
             } catch {
                 setOnline(false);
                 return new Error("connection error")
-            }    
-        //}
-        
+            }     
     };
 
     const mousePosition = async (latlng) => {
@@ -407,7 +403,6 @@ function LeafletMap(props) {
     const getPosition = async () => {
             try {
                 const response = await fetch("http://" + host + '/position');
-                console.log(response)
                 if (!response.ok) {
                     throw Error(response) 
                 } else {
@@ -508,7 +503,6 @@ function LeafletMap(props) {
      * @returns response
      */
      const clickGnss = async(e) => {
-        
         if(!gnssOnline) {
             try {
                 let response = await fetch("http://" + host + '/gnss', {
@@ -525,12 +519,9 @@ function LeafletMap(props) {
                 });
                 if (response.ok) {
                     const body = await response.json();
-                    console.log(body)
                     if (body.open) {
                         setComPort(body.com)
                         setOnline(true);
-                        //setConnectDisabled(false);
-                        pollServer(1000);
                     }
                     return body; 
                 } else {
@@ -542,8 +533,6 @@ function LeafletMap(props) {
             } 
         } else {
             setOnline(false);
-
-            //clearInterval(intervalgnss)
         }
         
     };
@@ -630,7 +619,8 @@ function LeafletMap(props) {
         />
          <ScaleControl name="Scale" className="scale"/>
         {latlng.map((position, idx) =>
-            <CircleMarker 
+            <CircleMarker
+              ref={gnssButton} 
               key={`marker-${idx}`} 
               center={position}
               radius ={5}
