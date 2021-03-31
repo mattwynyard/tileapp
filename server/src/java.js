@@ -47,7 +47,7 @@ let addTime = (date, seconds) => {
      */
 let getNZST = (date) => {
         let year = date.getFullYear();
-        let month = date.getMonth();
+        let month = date.getMonth() + 1;
         let day = date.getDate();
         let hours = date.getHours();
         let minutes = date.getMinutes();
@@ -66,8 +66,9 @@ let server = net.createServer((socket) => { //'connection' listener
     let ready = 0; //0 intialise 1 - ignore 2-read
     let record = {};
     socket.on('data', (data) => {
+        //console.log(socket);
       let buffer = data.toString().split(',');
-      buffer.pop(); //get rid of stupid comma on end of message lance wanted!!!
+      buffer.pop(); //get rid of stupid comma on end of message
       buffer.forEach((element) => {
         switch(element) {
             case "CONNECTED":
@@ -128,16 +129,13 @@ let server = net.createServer((socket) => { //'connection' listener
                 } 
                 break;
             }     
-      });
-
-      socket.on('error', (error) => {
+      });    
+    });
+    socket.on('error', (error) => {
         console.log('client error:' + error);
-      });
-      
-      
+    });  
   });
 
-  });
   server.listen(5001, () => { //'listening' listener
     console.log('server bound');
   });
@@ -161,22 +159,30 @@ let photoServer = net.createServer((listener) => { //'connection' listener
   });
   listener.on('data', (data) => {
     photo = data.toString(); //base64 string
+    console.log(photo.length);
   });
   listener.on('error', () => {
     console.log('photo client error');
   });
+
+  listener.on('drain', () => {
+    console.log('DRAIN');
+  });
 });
+
 photoServer.listen(5002, () => { //'listening' listener
   console.log('photo server bound');
 });
 
-photoServer.on('connection', () => {
-  console.log('photo client connected');
-});
 
-photoServer.on('close', () => {
-  console.log('photo client closed');
-});
+
+// photoServer.on('connection', () => {
+//   console.log('photo client connected');
+// });
+
+// photoServer.on('close', () => {
+//   console.log('photo client closed');
+// });
 
 photoServer.on('error', () => {
   console.log('photo client error');
@@ -205,7 +211,8 @@ module.exports = {
     },
     
     getPhoto: ()=> {
-        return photo;
+        let p = photo;
+        return p;
     },
 
     getMessage: () => {

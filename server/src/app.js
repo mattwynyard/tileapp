@@ -13,6 +13,7 @@ const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 const usbDetect = require('usb-detection');
 const path = require('path');
+const { Console } = require('console');
 
 const VENDOR_ID = 5446;
 
@@ -155,8 +156,8 @@ app.post('/grade', async (req, res) => {
 });
 
  app.post('/gnss', async (req, res) => {
-  console.log(req.body);
-  console.log(adapter.open)
+  //console.log(req.body);
+  //console.log(adapter.open)
   res.send({open: adapter.open, com: adapter.serialPort.path});
 });
 
@@ -169,8 +170,8 @@ app.get('/position', async (req, res) => {
     } else {
       merged = {...adapter.course, ...adapter.position};
       let photo = java.getPhoto();
+      //console.log("photo:"  + photo)
       let message = java.getMessage();
-      //console.log(message);
       if(message.connected) {
         adapter.setJava(javaPID);
       }

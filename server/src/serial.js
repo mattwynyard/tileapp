@@ -43,7 +43,6 @@ class GNSSAdapter {
       let hours = time.substring(0, 2);
       let minutes = time.substring(2, 4);
       let seconds = time.substring(4, 6);
-      let milliSeconds = time.substring(7, 9);
       let date = new Date();
       date.setUTCHours(hours);
       date.setUTCMinutes(minutes);
@@ -56,15 +55,16 @@ class GNSSAdapter {
      * @param {Date object} date
      */
     getNZDT(date) {
-        let year = date.getFullYear();
-        let month = date.getMonth();
-        let day = date.getDate();
-        let hours = date.getHours();
-        let minutes = date.getMinutes();
-        let seconds = date.getSeconds();
-        return year + "-" + month.toString().padStart(2, '0') + "-" + day.toString().padStart(2, '0') + " "
-        + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":"
-        + seconds.toString().padStart(2, '0') + " " + 'NZST';
+      let year = date.getFullYear();
+      let month = date.getMonth() + 1;
+      let day = date.getDate();
+      let hours = date.getHours();
+      let minutes = date.getMinutes();
+      let seconds = date.getSeconds();
+      let pgDate =  year + "-" + month.toString().padStart(2, '0') + "-" + day.toString().padStart(2, '0') + " "
+      + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0') + ":"
+      + seconds.toString().padStart(2, '0') + " " + 'NZST';
+      return pgDate;
     }
 
     setJava(PID) {

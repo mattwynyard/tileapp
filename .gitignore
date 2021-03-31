@@ -16,6 +16,7 @@
 /server/.env
 /server/server.cert
 /server/server.key
+/model
 
 # misc
 .DS_Store

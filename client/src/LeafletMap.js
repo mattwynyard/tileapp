@@ -9,8 +9,6 @@ import { DownOutlined} from '@ant-design/icons';
 import 'antd/dist/antd.css';
 import React, { useState, useEffect, useRef} from 'react';
 
-
-
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
@@ -19,10 +17,8 @@ function MapEvents(props) {
     const map = useMapEvents({
       click: (e) => {
         props.mouse(e.latlng);
-        //map.panTo(e.latlng);
       },     
     });
-
     return null;
   }
 
@@ -522,6 +518,7 @@ function LeafletMap(props) {
                     if (body.open) {
                         setComPort(body.com)
                         setOnline(true);
+                        setConnectDisabled(false)
                     }
                     return body; 
                 } else {
