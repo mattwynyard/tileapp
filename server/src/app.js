@@ -155,6 +155,12 @@ app.post('/grade', async (req, res) => {
   
 });
 
+app.post('/access', async (req, res) => {
+  console.log(req);
+  //console.log(adapter.open)
+  res.send({data: "hello from matt"});
+});
+
  app.post('/gnss', async (req, res) => {
   //console.log(req.body);
   //console.log(adapter.open)
