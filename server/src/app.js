@@ -152,15 +152,10 @@ app.post('/grade', async (req, res) => {
 });
 
 app.post('/access', async (req, res) => {
-  console.log(req.body.latlng[0]);
+  console.log(req.body);
   res.send({data: "hello from matt"});
 });
 
-app.post('/access', async (req, res) => {
-  console.log(req);
-  //console.log(adapter.open)
-  res.send({data: "hello from matt"});
-});
 
  app.post('/gnss', async (req, res) => {
   res.send({open: adapter.open, com: adapter.serialPort.path});

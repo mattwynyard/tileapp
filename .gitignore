@@ -17,6 +17,8 @@
 /server/server.cert
 /server/server.key
 /model
+*.accdb
+*.mdb
 
 # misc
 .DS_Store

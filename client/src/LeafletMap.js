@@ -225,8 +225,7 @@ function LeafletMap(props) {
                     }               
                 });
                 
-            }
-            
+            }            
             }, 1000);
             return () => {
             clearInterval(id);
