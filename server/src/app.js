@@ -13,7 +13,6 @@ const port = process.env.PROXY_PORT;
 const host = process.env.PROXY;
 const usbDetect = require('usb-detection');
 const path = require('path');
-const { Console } = require('console');
 
 const VENDOR_ID = 5446;
 
@@ -64,15 +63,14 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: false }))
 // Parse JSON bodies (as sent by API clients)
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json');
-  //res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'localhost:5000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
   next();
 });
 
+//serve tiles
 app.get('/auckland/:z/:x/:y', async (req, res) => {
-
   res.sendFile(path.join(__dirname, '../', req.url));
-
 });
 
 app.post('/footpath', async (req, res) => {
@@ -151,8 +149,11 @@ app.post('/grade', async (req, res) => {
     }
     res.send({ message: "ok" });
   }
-  
-  
+});
+
+app.post('/access', async (req, res) => {
+  console.log(req.body.latlng[0]);
+  res.send({data: "hello from matt"});
 });
 
 app.post('/access', async (req, res) => {
@@ -162,8 +163,6 @@ app.post('/access', async (req, res) => {
 });
 
  app.post('/gnss', async (req, res) => {
-  //console.log(req.body);
-  //console.log(adapter.open)
   res.send({open: adapter.open, com: adapter.serialPort.path});
 });
 
@@ -176,7 +175,6 @@ app.get('/position', async (req, res) => {
     } else {
       merged = {...adapter.course, ...adapter.position};
       let photo = java.getPhoto();
-      //console.log("photo:"  + photo)
       let message = java.getMessage();
       if(message.connected) {
         adapter.setJava(javaPID);
